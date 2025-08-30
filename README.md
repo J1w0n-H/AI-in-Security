@@ -10,6 +10,7 @@
 ⚠️ Code and data for the [ICLR 2025 Paper](https://arxiv.org/pdf/2405.17238) can be found in the v1 branch, license and citation below.
 
 ## 📰 News
+* **[Aug. 30, 2025]**: Updated CWE-Bench-Java with 93 new CVEs and 38 CWEs.
 * **[Jul. 10, 2025]**: IRIS v2 released, added support for 7 new CWEs.
 
 ## 👋 Overview
@@ -21,9 +22,24 @@ At a high level, IRIS takes a project and a CWE (vulnerability class, such as pa
 
 ### CWE-Bench-Java
 This repository also contains the dataset CWE-Bench-Java, presented in the paper [LLM-Assisted Static Analysis for Detecting Security Vulnerabilities](https://arxiv.org/abs/2405.17238).
-At a high level, this dataset contains 120 CVEs spanning 4 CWEs, namely path-traversal, OS-command injection, cross-site scripting, and code-injection. Each CVE includes the buggy and fixed source code of the project, along with the information of the fixed files and functions. We provide the seed information in this repository, and we provide scripts for fetching, patching, and building the repositories. The dataset collection process is illustrated in the figure below:
+At a high level, this dataset contains 213 CVEs spanning 49 CWEs. Some examples include path-traversal, OS-command injection, cross-site scripting, and code-injection. Each CVE includes the buggy and fixed source code of the project, along with the information of the fixed files and functions. We provide the seed information in this repository, and we provide scripts for fetching, patching, and building the repositories. The dataset collection process is illustrated in the figure below:
 
 ![cwe-bench graphic](docs/assets/dataset-collection.png)
+
+The table below summarizes the number of CVEs in our dataset grouped by CWE category, with smaller categories (fewer than 5 CVEs) grouped together for compactness.
+
+| CWE-ID | CVE Count |
+|--------|-----------|
+| CWE-22 | 60 |
+| CWE-79 | 38 |
+| CWE-94 | 23 |
+| CWE-78 | 13 |
+| CWE-502 | 7 |
+| CWE-611 | 6 |
+| CWE-200 | 5 |
+| CWE-287 | 5 |
+| CWE-400 | 5 |
+| Other CWEs (36 total) | 51 | 
 
 ## 🚀 Set Up
 ### Using Docker (Recommended)
