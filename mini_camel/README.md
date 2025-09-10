@@ -4,7 +4,6 @@ A simplified Stage 1 implementation of the core concepts from the CaMeL paper.
 
 ## 🎯 Core Concepts
 
-<<<<<<< HEAD
 - **PLLM**: 사용자 쿼리 → Python 코드 생성 (시뮬레이션)
 - **QLLM**: 비구조화 데이터 → 구조화 데이터 파싱 (Ollama LLM 호출)
 - **Security Policy**: 정책 레지스트리 기반 다층 보안 제어
@@ -12,27 +11,17 @@ A simplified Stage 1 implementation of the core concepts from the CaMeL paper.
 - **Risk Level**: 데이터 민감도 자동 추론 (LOW/MEDIUM/HIGH)
 - **Tool Adapter**: 자동 Capabilities 부착 및 타입 검증
 - **Trace Logging**: 감사 및 재현을 위한 완전한 로그 추적
-=======
-- **Metadata-based Security**: Attach source and permission info to all data
-- **Sandboxed Execution**: Safe Python code execution
-- **Basic Security Policy**: Public/private data distinction
->>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
 
 ## 🚀 Installation & Execution
 
 ```bash
-<<<<<<< HEAD
 # 의존성 설치
 pip install -r requirements.txt
 
 # 데모 실행
 python demo.py
-=======
-# Run without dependencies
-python mini_camel.py
->>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
 
-# Or run tests
+# 또는 테스트 실행
 python test_mini_camel.py
 ```
 
@@ -45,9 +34,8 @@ mini_camel/
 └── README.md          # This file
 ```
 
-## 🔬 Execution Results
+## 🔬 Core Features
 
-<<<<<<< HEAD
 ### 1. 데이터 위험도 레벨화
 - **LOW**: 일반 텍스트, 안전한 데이터
 - **MEDIUM**: 이름, 주소, 사업자등록번호 등
@@ -91,7 +79,9 @@ mini_camel/
 - `write`: 파일 쓰기 (MEDIUM 이상 위험도 차단)
 - `delete`: 파일 삭제 (LOW 이상 위험도 차단)  
 - `email`: 이메일 전송 (MEDIUM 이상 위험도 차단)
-=======
+
+## 📊 Test Results
+
 ```
 === Mini CaMeL Stage 1 Test ===
 
@@ -102,44 +92,14 @@ mini_camel/
 2. Dangerous operations test (trusted data only)
    write(trusted): CaMeLValue('Write complete: safe data', ...)
    write(untrusted): CaMeLValue('Security policy violation: write', ...)
->>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
 
 3. File deletion test
    delete(user_file): CaMeLValue('Security policy violation: delete', ...)
    delete(trusted_file): CaMeLValue('File deleted: system.log', ...)
 
-<<<<<<< HEAD
-| 논문 구성요소 | 원래 논문 구현 | 간소화 구현 |
-|---------------|----------------|-------------|
-| **PLLM (Privileged LLM)** | 복잡한 코드 생성 엔진<br/>- Python AST 파싱<br/>- 복잡한 프롬프트 엔지니어링<br/>- 다단계 코드 검증 | `PLLM` 클래스 (30 라인)<br/>- 간단한 시뮬레이션<br/>- 툴 어댑터 데코레이터<br/>- 자동 Capabilities 부착 |
-| **QLLM (Quarantined LLM)** | 격리된 환경에서 실행<br/>- Pydantic 스키마 검증<br/>- 복잡한 에러 핸들링<br/>- 재시도 메커니즘 | `QLLM` 클래스 (40 라인)<br/>- Ollama 직접 호출<br/>- Pydantic 스키마 검증<br/>- JSON 파싱 및 폴백 |
-| **Security Policies** | 도메인별 정책 엔진<br/>- Banking/Workspace/Slack/Travel<br/>- 복잡한 권한 매트릭스<br/>- 세밀한 접근 제어 | `SecurityPolicy` + `PolicyRegistry` (120 라인)<br/>- 정책 레지스트리 시스템<br/>- 우선순위 기반 충돌 해결<br/>- 상세한 차단 이유 반환 |
-| **Capabilities** | 복잡한 frozenset 기반<br/>- 다중 소스 추적<br/>- 세밀한 권한 제어<br/>- 동적 권한 계산 | `Capabilities` 클래스 (25 라인)<br/>- Source + RiskLevel + Readers<br/>- 자동 위험도 추론<br/>- 완전한 출처 추적 |
-| **CaMeL Interpreter** | 25,000+ 라인 AST 파서<br/>- 완전한 Python 파싱<br/>- 복잡한 네임스페이스 관리<br/>- 고급 메모리 관리 | `CaMeL` 클래스 (25 라인)<br/>- 단일 게이트웨이 패턴<br/>- 정책 검사 후 실행<br/>- 툴 어댑터 통합 |
-| **Tool Integration** | 100+ AgentDojo 도구<br/>- 실제 시스템 호출<br/>- 복잡한 도구 체인<br/>- 고급 에러 복구 | 4개 핵심 도구 + 어댑터<br/>- 자동 Capabilities 부착<br/>- 타입 안전성 검증<br/>- Silent failure 방지 |
-| **LLM Integration** | 실제 API 호출<br/>- OpenAI/Google/Anthropic<br/>- 복잡한 클라이언트 관리<br/>- 고급 프롬프트 엔지니어링 | QLLM만 Ollama 통합<br/>- PLLM은 시뮬레이션<br/>- 프롬프트 엔지니어링<br/>- JSON 응답 파싱 |
-
-## 🚀 주요 개선사항
-
-### 7가지 핵심 보안 기능 구현
-1. **데이터 위험도 레벨화**: RegEx 기반 자동 위험도 추론
-2. **정책 결과 표준화**: 상세한 차단 이유 및 단일 게이트웨이
-3. **Readers/Provenance 확장**: 세분화된 권한 및 완전한 출처 추적
-4. **툴 어댑터 자동부착**: 자동 메타데이터 부착 및 타입 안전성
-5. **정책 레지스트리 & 합성**: 우선순위 기반 정책 충돌 해결
-6. **트레이스 로그 (감사/재현)**: 완전한 로그 추적 및 PII 마스킹
-7. **Q-LLM 스키마 & 정보부족 루프**: 정보 충분성 검증 및 자동 재시도
-
-### 코드 품질 개선
-- **간소화**: 639줄 → 541줄 (-15%)
-- **불필요한 코드 제거**: 사용되지 않는 enum, 메서드, 변수 정리
-- **모듈화**: 데모 코드를 별도 파일로 분리
-- **테스트 커버리지**: 38개 테스트 모두 통과
-=======
 4. Email sending test
    email(user_data): CaMeLValue('Security policy violation: email', ...)
    email(trusted_data): CaMeLValue('Email sent: support@company.com - system notification', ...)
->>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
 
 5. Unknown operation test
    unknown_op: CaMeLValue('Unknown operation: unknown_operation', ...)
@@ -160,7 +120,7 @@ Failures: 0
 Errors: 0
 ```
 
-## 🔗 Core Ideas & Simplified Implementation
+## 🔗 Implementation Details
 
 ### 📖 Core Idea
 **Metadata-based Security**: Attach source and permission info to all data to block dangerous operations with untrusted data
@@ -175,13 +135,9 @@ Errors: 0
 | **Tool Integration** | AgentDojo benchmark | → | 4 tools: `print`, `write`, `delete`, `email` | **100+ AgentDojo tools** → **4 essential tools** |
 | **LLM Integration** | Real AI model calls | → | Mock execution (simulation) | **Real API calls** → **Simulated responses** |
 
-*See code comments for detailed implementation explanations*
-
 **Core**: Untrusted data attempting dangerous operations → Blocked!
 
-
-
-## 🎓 Learning Points
+## 🎓 Key Learnings
 
 1. **Importance of Metadata**: Track source of all data
 2. **Effectiveness of Security Policy**: Block dangerous operations with untrusted data
