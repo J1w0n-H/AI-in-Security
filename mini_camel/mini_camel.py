@@ -1,14 +1,16 @@
-# mini_camel.py - CaMeL 핵심 구조 간소화 버전
+# mini_camel.py - Stage 1 Minimal Implementation
 """
-CaMeL 논문의 핵심만 구현:
-- PLLM (Privileged LLM)
-- QLLM (Quarantined LLM) 
-- Security Policies
-- Capabilities
+Stage 1 implementation of CaMeL paper's core concepts, maximally simplified
+
+Core ideas:
+- Attach metadata to all data
+- Metadata-based security policies
+- Sandboxed execution environment
 """
 
 from dataclasses import dataclass
 from enum import Enum
+<<<<<<< HEAD
 from typing import Any, Dict, Optional, Union, Set, Type, List
 import json
 import ollama
@@ -107,11 +109,18 @@ class TraceLogger:
 # ============================================================================
 # Capabilities (메타데이터)
 # ============================================================================
+=======
+from typing import Any, Dict
+>>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
 
+# 1. Metadata System (Paper: Complex frozenset-based capabilities → Simple enums)
 class Source(Enum):
-    USER = "user"      # 신뢰할 수 없음
-    CAMEL = "camel"    # 신뢰할 수 있음
+    """Data source: USER (untrusted), CAMEL (trusted), TOOL (generated)"""
+    USER = "user"      # User input - untrusted
+    CAMEL = "camel"    # System generated - trusted  
+    TOOL = "tool"      # Tool output - trusted
 
+<<<<<<< HEAD
 
 # Readers는 "Public" 문자열 또는 구체적인 사용자 ID 집합
 Readers = Union[str, Set[str]]
@@ -128,9 +137,27 @@ class Capabilities:
     readers: Readers = "Public"  # "Public" 또는 구체적인 사용자 ID 집합
     provenance: str = "user"  # "user", "camel", "tool_id", "qllm"
     inner_source: Optional[str] = None  # 내부 소스 정보
+=======
+class Reader(Enum):
+    """Data access permissions: PUBLIC (accessible), PRIVATE (restricted)"""
+    PUBLIC = "public"    # Can be used in operations
+    PRIVATE = "private"  # Restricted access
+
+@dataclass
+class Capabilities:
+    """Metadata attached to all data (Paper: complex frozenset → Simple enums)"""
+    source: Source      # Where data came from
+    reader: Reader      # Access permission level
+    
+    def is_public(self) -> bool:
+        """Check if data is publicly accessible"""
+        return self.reader == Reader.PUBLIC
+>>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
     
     def is_trusted(self) -> bool:
+        """Check if data is from trusted source (CAMEL system)"""
         return self.source == Source.CAMEL
+<<<<<<< HEAD
     
     
     def is_public(self) -> bool:
@@ -144,75 +171,20 @@ class Capabilities:
         if isinstance(self.readers, set):
             return principals.issubset(self.readers)
         return False
+=======
+>>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
 
 @dataclass
 class CaMeLValue:
-    value: Any
-    capabilities: Capabilities
+    """All values carry metadata (Paper: complex CaMeLValue → Simple wrapper)"""
+    value: Any                    # Actual data
+    capabilities: Capabilities    # Metadata (source + permissions)
+    
+    def __repr__(self):
+        return f"CaMeLValue({self.value!r}, {self.capabilities})"
+    
 
-# ============================================================================
-# 위험도 추론 함수
-# ============================================================================
-
-def infer_risk_from_value(value: Any) -> RiskLevel:
-    """값의 내용을 분석하여 위험도를 추론"""
-    if not isinstance(value, str):
-        return RiskLevel.LOW
-    
-    value_str = str(value).lower()
-    
-    # HIGH 위험 패턴 (민감한 개인정보)
-    high_risk_patterns = [
-        r'\d{6}-\d{7}',  # 주민등록번호 (6자리-7자리)
-        r'\d{3}-\d{4}-\d{4}',  # 전화번호 (3-4-4)
-        r'\d{2,3}-\d{3,4}-\d{4}',  # 전화번호 변형
-        r'\b\d{4}-\d{2}-\d{2}\b',  # 생년월일 (YYYY-MM-DD)
-        r'\b\d{2}/\d{2}/\d{4}\b',  # 생년월일 (MM/DD/YYYY)
-        r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',  # 이메일
-        r'\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b',  # 신용카드 번호
-        r'password|passwd|pwd',  # 패스워드 관련
-        r'secret|private|confidential',  # 기밀 정보
-    ]
-    
-    # MEDIUM 위험 패턴 (중간 민감도)
-    medium_risk_patterns = [
-        r'\b\d{3}-\d{2}-\d{5}\b',  # 사업자등록번호
-        r'\b\d{2}-\d{2}-\d{6}\b',  # 운전면허번호
-        r'address|주소',  # 주소 정보
-        r'name|이름',  # 이름 정보
-        r'phone|전화',  # 전화 관련
-    ]
-    
-    # HIGH 위험 패턴 검사
-    for pattern in high_risk_patterns:
-        if re.search(pattern, value_str):
-            return RiskLevel.HIGH
-    
-    # MEDIUM 위험 패턴 검사
-    for pattern in medium_risk_patterns:
-        if re.search(pattern, value_str):
-            return RiskLevel.MEDIUM
-    
-    return RiskLevel.LOW
-
-# ============================================================================
-# Security Policy
-# ============================================================================
-
-@dataclass
-class SecurityPolicyResult:
-    allowed: bool
-    reason_code: str
-    reason: str
-    
-    @classmethod
-    def allow(cls) -> 'SecurityPolicyResult':
-        return cls(True, "ALLOWED", "Operation allowed")
-    
-    @classmethod
-    def deny(cls, reason_code: str, reason: str) -> 'SecurityPolicyResult':
-        return cls(False, reason_code, reason)
-
+<<<<<<< HEAD
 # 정책 함수 타입 정의
 PolicyFunction = callable
 
@@ -710,3 +682,134 @@ class CaMeL:
         )
         return CaMeLValue(f"Unknown: {operation}", Capabilities(Source.CAMEL))
 
+=======
+# 2. Security Policy (Paper: Domain-specific policies → Single trust-based policy)
+class SecurityPolicy:
+    """Trust-based security policy (Paper: banking/workspace/slack → Single policy)"""
+    
+    def check_access(self, tool_name: str, args: Dict[str, CaMeLValue]) -> bool:
+        """Block dangerous operations with untrusted data"""
+        if tool_name in ["write", "delete", "email"]:  # Dangerous tools
+            for arg in args.values():
+                if not arg.capabilities.is_trusted():  # Untrusted data
+                    return False  # Block!
+        return True
+    
+
+# 3. Tools (Paper: 100+ AgentDojo tools → 4 essential tools)
+def safe_print(data: CaMeLValue) -> CaMeLValue:
+    """Safe output tool (all data allowed)"""
+    return CaMeLValue(
+        f"Output: {data.value}",
+        Capabilities(Source.CAMEL, Reader.PUBLIC)
+    )
+
+def dangerous_write(data: CaMeLValue) -> CaMeLValue:
+    """Dangerous write tool (trusted data only)"""
+    return CaMeLValue(
+        f"Write complete: {data.value}",
+        Capabilities(Source.CAMEL, Reader.PUBLIC)
+    )
+
+def delete_file(filename: CaMeLValue) -> CaMeLValue:
+    """File deletion tool (trusted data only)"""
+    return CaMeLValue(
+        f"File deleted: {filename.value}",
+        Capabilities(Source.CAMEL, Reader.PUBLIC)
+    )
+
+def send_email(recipient: CaMeLValue, content: CaMeLValue) -> CaMeLValue:
+    """Email sending tool (trusted data only)"""
+    return CaMeLValue(
+        f"Email sent: {recipient.value} - {content.value}",
+        Capabilities(Source.CAMEL, Reader.PUBLIC)
+    )
+
+# 4. Interpreter (Paper: 25,000+ line AST parser → Simple operation dispatch)
+class MiniCaMeLInterpreter:
+    """Mini CaMeL interpreter (Paper: Full Python AST parsing → Simple dispatch)"""
+    
+    def __init__(self):
+        self.security_policy = SecurityPolicy()
+        self.tools = {
+            'print': safe_print,
+            'write': dangerous_write,
+            'delete': delete_file,
+            'email': send_email
+        }
+    
+    def execute_operation(self, operation: str, *args: CaMeLValue) -> CaMeLValue:
+        """Execute operation with security check"""
+        if operation not in self.tools:
+            return CaMeLValue(
+                f"Unknown operation: {operation}",
+                Capabilities(Source.CAMEL, Reader.PUBLIC)
+            )
+        
+        # Security policy check (Paper: Complex policy engine → Simple trust check)
+        args_dict = {f"arg_{i}": arg for i, arg in enumerate(args)}
+        if not self.security_policy.check_access(operation, args_dict):
+            return CaMeLValue(
+                f"Security policy violation: {operation}",
+                Capabilities(Source.CAMEL, Reader.PUBLIC)
+            )
+        
+        # Tool execution (Paper: Real API calls → Simulated responses)
+        try:
+            return self.tools[operation](*args)
+        except Exception as e:
+            return CaMeLValue(
+                f"Execution error: {e}",
+                Capabilities(Source.CAMEL, Reader.PUBLIC)
+            )
+    
+    def create_value(self, value: Any, source: Source = Source.USER, 
+                    reader: Reader = Reader.PUBLIC) -> CaMeLValue:
+        """CaMeLValue creation helper"""
+        return CaMeLValue(value, Capabilities(source, reader))
+
+# 5. Test and examples
+def main():
+    """Main test function"""
+    print("=== Mini CaMeL Stage 1 Test ===\n")
+    
+    interpreter = MiniCaMeLInterpreter()
+    
+    # Trusted data (generated by CaMeL system)
+    trusted_data = interpreter.create_value("safe data", Source.CAMEL, Reader.PUBLIC)
+    
+    # Untrusted data (user input)
+    untrusted_data = interpreter.create_value("user input", Source.USER, Reader.PUBLIC)
+    
+    print("1. Safe operations test (all data allowed)")
+    print(f"   print(trusted): {interpreter.execute_operation('print', trusted_data)}")
+    print(f"   print(untrusted): {interpreter.execute_operation('print', untrusted_data)}")
+    
+    print("\n2. Dangerous operations test (trusted data only)")
+    print(f"   write(trusted): {interpreter.execute_operation('write', trusted_data)}")
+    print(f"   write(untrusted): {interpreter.execute_operation('write', untrusted_data)}")
+    
+    print("\n3. File deletion test")
+    filename = interpreter.create_value("important.txt", Source.USER, Reader.PUBLIC)
+    print(f"   delete(user_file): {interpreter.execute_operation('delete', filename)}")
+    
+    trusted_filename = interpreter.create_value("system.log", Source.CAMEL, Reader.PUBLIC)
+    print(f"   delete(trusted_file): {interpreter.execute_operation('delete', trusted_filename)}")
+    
+    print("\n4. Email sending test")
+    recipient = interpreter.create_value("admin@company.com", Source.USER, Reader.PUBLIC)
+    content = interpreter.create_value("important message", Source.USER, Reader.PUBLIC)
+    print(f"   email(user_data): {interpreter.execute_operation('email', recipient, content)}")
+    
+    trusted_recipient = interpreter.create_value("support@company.com", Source.CAMEL, Reader.PUBLIC)
+    trusted_content = interpreter.create_value("system notification", Source.CAMEL, Reader.PUBLIC)
+    print(f"   email(trusted_data): {interpreter.execute_operation('email', trusted_recipient, trusted_content)}")
+    
+    print("\n5. Unknown operation test")
+    print(f"   unknown_op: {interpreter.execute_operation('unknown_operation', trusted_data)}")
+    
+    print("\n=== Test Complete ===")
+
+if __name__ == "__main__":
+    main()
+>>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2

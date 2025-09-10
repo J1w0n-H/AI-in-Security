@@ -1,9 +1,10 @@
-# Mini CaMeL - CaMeL 핵심 구조 간소화 버전
+# Mini CaMeL - Stage 1 Implementation
 
-CaMeL 논문의 핵심 구조를 최대한 간소화한 버전입니다.
+A simplified Stage 1 implementation of the core concepts from the CaMeL paper.
 
-## 🎯 핵심 구조
+## 🎯 Core Concepts
 
+<<<<<<< HEAD
 - **PLLM**: 사용자 쿼리 → Python 코드 생성 (시뮬레이션)
 - **QLLM**: 비구조화 데이터 → 구조화 데이터 파싱 (Ollama LLM 호출)
 - **Security Policy**: 정책 레지스트리 기반 다층 보안 제어
@@ -11,48 +12,42 @@ CaMeL 논문의 핵심 구조를 최대한 간소화한 버전입니다.
 - **Risk Level**: 데이터 민감도 자동 추론 (LOW/MEDIUM/HIGH)
 - **Tool Adapter**: 자동 Capabilities 부착 및 타입 검증
 - **Trace Logging**: 감사 및 재현을 위한 완전한 로그 추적
+=======
+- **Metadata-based Security**: Attach source and permission info to all data
+- **Sandboxed Execution**: Safe Python code execution
+- **Basic Security Policy**: Public/private data distinction
+>>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
 
-## 🚀 사용법
+## 🚀 Installation & Execution
 
 ```bash
+<<<<<<< HEAD
 # 의존성 설치
 pip install -r requirements.txt
 
 # 데모 실행
 python demo.py
+=======
+# Run without dependencies
+python mini_camel.py
+>>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
 
-# 테스트 실행  
+# Or run tests
 python test_mini_camel.py
 ```
 
-## 💻 코드 예제
+## 📁 Structure
 
-```python
-from mini_camel import CaMeL, Source, RiskLevel
-
-# CaMeL 시스템 초기화
-camel = CaMeL()
-
-# 데이터 생성 (자동 위험도 추론)
-safe_data = camel.create_value("hello world")  # RiskLevel.LOW
-email_data = camel.create_value("john@example.com")  # RiskLevel.HIGH (자동 감지)
-phone_data = camel.create_value("010-1234-5678")  # RiskLevel.HIGH (자동 감지)
-
-# 작업 실행
-print_result = camel.execute("print", email_data)  # 허용
-write_result = camel.execute("write", email_data)  # 차단 (HIGH 위험도)
-
-print(print_result.value)  # "Output: john@example.com"
-print(write_result.value)  # "Security violation: Operation 'write' blocked: risk level HIGH exceeds threshold MEDIUM for 'data'"
-
-# 정책 결과 상세 확인
-policy = camel.pllm.policy
-result = policy.check_access("email", {"recipient": email_data})
-print(f"Reason: {result.reason_code} - {result.reason}")
+```
+mini_camel/
+├── mini_camel.py      # Core implementation (180 lines)
+├── test_mini_camel.py # Test code (190 lines)
+└── README.md          # This file
 ```
 
-## 🛡️ 보안 기능
+## 🔬 Execution Results
 
+<<<<<<< HEAD
 ### 1. 데이터 위험도 레벨화
 - **LOW**: 일반 텍스트, 안전한 데이터
 - **MEDIUM**: 이름, 주소, 사업자등록번호 등
@@ -96,9 +91,24 @@ print(f"Reason: {result.reason_code} - {result.reason}")
 - `write`: 파일 쓰기 (MEDIUM 이상 위험도 차단)
 - `delete`: 파일 삭제 (LOW 이상 위험도 차단)  
 - `email`: 이메일 전송 (MEDIUM 이상 위험도 차단)
+=======
+```
+=== Mini CaMeL Stage 1 Test ===
 
-## 🔧 논문 구성요소 간소화 구현
+1. Safe operations test (all data allowed)
+   print(trusted): CaMeLValue('Output: safe data', ...)
+   print(untrusted): CaMeLValue('Output: user input', ...)
 
+2. Dangerous operations test (trusted data only)
+   write(trusted): CaMeLValue('Write complete: safe data', ...)
+   write(untrusted): CaMeLValue('Security policy violation: write', ...)
+>>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
+
+3. File deletion test
+   delete(user_file): CaMeLValue('Security policy violation: delete', ...)
+   delete(trusted_file): CaMeLValue('File deleted: system.log', ...)
+
+<<<<<<< HEAD
 | 논문 구성요소 | 원래 논문 구현 | 간소화 구현 |
 |---------------|----------------|-------------|
 | **PLLM (Privileged LLM)** | 복잡한 코드 생성 엔진<br/>- Python AST 파싱<br/>- 복잡한 프롬프트 엔지니어링<br/>- 다단계 코드 검증 | `PLLM` 클래스 (30 라인)<br/>- 간단한 시뮬레이션<br/>- 툴 어댑터 데코레이터<br/>- 자동 Capabilities 부착 |
@@ -125,4 +135,56 @@ print(f"Reason: {result.reason_code} - {result.reason}")
 - **불필요한 코드 제거**: 사용되지 않는 enum, 메서드, 변수 정리
 - **모듈화**: 데모 코드를 별도 파일로 분리
 - **테스트 커버리지**: 38개 테스트 모두 통과
+=======
+4. Email sending test
+   email(user_data): CaMeLValue('Security policy violation: email', ...)
+   email(trusted_data): CaMeLValue('Email sent: support@company.com - system notification', ...)
+>>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
 
+5. Unknown operation test
+   unknown_op: CaMeLValue('Unknown operation: unknown_operation', ...)
+
+=== Test Complete ===
+```
+
+## ✅ Test Results
+
+```
+=== Mini CaMeL Test Started ===
+Ran 13 tests in 0.001s
+OK
+
+=== Test Results ===
+Tests run: 13
+Failures: 0
+Errors: 0
+```
+
+## 🔗 Core Ideas & Simplified Implementation
+
+### 📖 Core Idea
+**Metadata-based Security**: Attach source and permission info to all data to block dangerous operations with untrusted data
+
+### 🔧 Paper → Implementation Mapping
+
+| Paper Concept | Paper Implementation | → | Our Implementation | How We Simplified |
+|---------------|---------------------|---|-------------------|-------------------|
+| **Metadata System** | Complex `CaMeLValue` class | → | `Capabilities` + `CaMeLValue` (25 lines) | **Complex frozenset-based capabilities** → **Simple Source + Reader enums** |
+| **Security Policy** | Domain-specific policy engines | → | `SecurityPolicy` class (10 lines) | **Banking/workspace/slack policies** → **Single trust-based policy** |
+| **Python Interpreter** | 25,000+ line AST parser | → | `MiniCaMeLInterpreter` (35 lines) | **Full Python AST parsing** → **Simple operation dispatch** |
+| **Tool Integration** | AgentDojo benchmark | → | 4 tools: `print`, `write`, `delete`, `email` | **100+ AgentDojo tools** → **4 essential tools** |
+| **LLM Integration** | Real AI model calls | → | Mock execution (simulation) | **Real API calls** → **Simulated responses** |
+
+*See code comments for detailed implementation explanations*
+
+**Core**: Untrusted data attempting dangerous operations → Blocked!
+
+
+
+## 🎓 Learning Points
+
+1. **Importance of Metadata**: Track source of all data
+2. **Effectiveness of Security Policy**: Block dangerous operations with untrusted data
+3. **Sandboxed Execution**: Constraints for safe code execution
+4. **Test-driven Development**: Verification of all functionality
+5. **Code Optimization**: Remove redundancy while maintaining functionality

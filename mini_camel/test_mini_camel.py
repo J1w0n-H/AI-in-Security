@@ -1,9 +1,10 @@
-# test_mini_camel.py - CaMeL 간소화 테스트
+# test_mini_camel.py - Mini CaMeL test code
 """
-CaMeL 핵심 구조 간소화 테스트
+Test code for Mini CaMeL's core functionality
 """
 
 import unittest
+<<<<<<< HEAD
 from typing import Dict
 from mini_camel import (
     CaMeL, CaMeLValue, Capabilities, Source, RiskLevel,
@@ -11,9 +12,14 @@ from mini_camel import (
     infer_risk_from_value, Readers, PolicyRegistry, create_untrusted_danger_op_policy,
     create_risk_threshold_policy, create_reader_mismatch_policy,
     TraceLogger, TraceEntry, ToolCall
+=======
+from mini_camel import (
+    Source, Reader, Capabilities, CaMeLValue, 
+    SecurityPolicy, MiniCaMeLInterpreter
+>>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
 )
-from pydantic import BaseModel
 
+<<<<<<< HEAD
 class TestSchema(BaseModel):
     name: str
     value: int
@@ -58,20 +64,40 @@ class TestRiskInference(unittest.TestCase):
         # LOW 위험
         self.assertEqual(infer_risk_from_value("hello world"), RiskLevel.LOW)
         self.assertEqual(infer_risk_from_value("normal text"), RiskLevel.LOW)
+=======
+class TestCaMeLValue(unittest.TestCase):
+    """CaMeLValue class tests"""
+    
+    def test_create_value(self):
+        """Value creation test"""
+        value = CaMeLValue("test", Capabilities(Source.USER, Reader.PUBLIC))
+        self.assertEqual(value.value, "test")
+        self.assertEqual(value.capabilities.source, Source.USER)
+        self.assertEqual(value.capabilities.reader, Reader.PUBLIC)
+    
+    def test_capabilities_access(self):
+        """Capabilities access test"""
+        public_value = CaMeLValue("public", Capabilities(Source.USER, Reader.PUBLIC))
+        private_value = CaMeLValue("private", Capabilities(Source.USER, Reader.PRIVATE))
+        trusted_value = CaMeLValue("trusted", Capabilities(Source.CAMEL, Reader.PUBLIC))
+        untrusted_value = CaMeLValue("untrusted", Capabilities(Source.USER, Reader.PUBLIC))
         
-        # MEDIUM 위험
-        self.assertEqual(infer_risk_from_value("my name is John"), RiskLevel.MEDIUM)
-        self.assertEqual(infer_risk_from_value("address: 123 Main St"), RiskLevel.MEDIUM)
+        # Test public/private access
+        self.assertTrue(public_value.capabilities.is_public())
+        self.assertFalse(private_value.capabilities.is_public())
+>>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
         
-        # HIGH 위험
-        self.assertEqual(infer_risk_from_value("john@example.com"), RiskLevel.HIGH)
-        self.assertEqual(infer_risk_from_value("010-1234-5678"), RiskLevel.HIGH)
-        self.assertEqual(infer_risk_from_value("123456-1234567"), RiskLevel.HIGH)
+        # Test trusted/untrusted access
+        self.assertTrue(trusted_value.capabilities.is_trusted())
+        self.assertFalse(untrusted_value.capabilities.is_trusted())
 
 class TestSecurityPolicy(unittest.TestCase):
+    """Security policy tests"""
+    
     def setUp(self):
         self.policy = SecurityPolicy()
     
+<<<<<<< HEAD
     def test_safe_operations(self):
         trusted = CaMeLValue("data", Capabilities(Source.CAMEL, ))
         untrusted = CaMeLValue("data", Capabilities(Source.USER, ))
@@ -207,9 +233,32 @@ class TestToolAdapter(unittest.TestCase):
         self.assertIsNotNone(result.capabilities.inner_source)
         self.assertNotEqual(result.capabilities.provenance, "")
         self.assertNotEqual(result.capabilities.inner_source, "")
+=======
+    def test_safe_operation_allowed(self):
+        """Safe operation allowed test"""
+        safe_data = CaMeLValue("data", Capabilities(Source.USER, Reader.PUBLIC))
+        result = self.policy.check_access("print", {"arg_0": safe_data})
+        self.assertTrue(result)
+    
+    def test_dangerous_operation_with_trusted_data(self):
+        """Dangerous operation with trusted data allowed test"""
+        trusted_data = CaMeLValue("data", Capabilities(Source.CAMEL, Reader.PUBLIC))
+        result = self.policy.check_access("write", {"arg_0": trusted_data})
+        self.assertTrue(result)
+    
+    def test_dangerous_operation_with_untrusted_data(self):
+        """Dangerous operation with untrusted data blocked test"""
+        untrusted_data = CaMeLValue("data", Capabilities(Source.USER, Reader.PUBLIC))
+        result = self.policy.check_access("write", {"arg_0": untrusted_data})
+        self.assertFalse(result)
+    
+>>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
 
-class TestPLLM(unittest.TestCase):
+class TestMiniCaMeLInterpreter(unittest.TestCase):
+    """MiniCaMeLInterpreter tests"""
+    
     def setUp(self):
+<<<<<<< HEAD
         self.pllm = PLLM()
     
     def test_safe_print(self):
@@ -232,60 +281,138 @@ class TestPLLM(unittest.TestCase):
 class TestCaMeL(unittest.TestCase):
     def setUp(self):
         self.camel = CaMeL()
+=======
+        self.interpreter = MiniCaMeLInterpreter()
+>>>>>>> 8c4ca537ff73d47d0ecbe7df21b577bba6fddae2
     
     def test_create_value(self):
-        value = self.camel.create_value("test", Source.USER)
+        """Value creation helper test"""
+        value = self.interpreter.create_value("test", Source.USER, Reader.PUBLIC)
         self.assertEqual(value.value, "test")
         self.assertEqual(value.capabilities.source, Source.USER)
+        self.assertEqual(value.capabilities.reader, Reader.PUBLIC)
     
-    def test_execute_operation(self):
-        data = self.camel.create_value("test", Source.USER)
-        result = self.camel.execute("print", data)
-        self.assertIn("test", result.value)
+    def test_safe_operation_execution(self):
+        """Safe operation execution test"""
+        data = self.interpreter.create_value("hello", Source.USER, Reader.PUBLIC)
+        result = self.interpreter.execute_operation("print", data)
+        
+        self.assertIn("Output: hello", result.value)
+        self.assertEqual(result.capabilities.source, Source.CAMEL)
     
-    def test_security_enforcement(self):
-        untrusted = self.camel.create_value("data", Source.USER)
-        trusted = self.camel.create_value("data", Source.CAMEL)
+    def test_dangerous_operation_with_trusted_data(self):
+        """Dangerous operation with trusted data execution test"""
+        trusted_data = self.interpreter.create_value("secret", Source.CAMEL, Reader.PUBLIC)
+        result = self.interpreter.execute_operation("write", trusted_data)
         
-        write_untrusted = self.camel.execute("write", untrusted)
-        write_trusted = self.camel.execute("write", trusted)
-        
-        self.assertIn("Security violation", write_untrusted.value)
-        self.assertIn("Write:", write_trusted.value)
+        self.assertIn("Write complete: secret", result.value)
+        self.assertEqual(result.capabilities.source, Source.CAMEL)
     
-    def test_risk_based_security(self):
-        # 자동 위험도 추론 테스트
-        email_data = self.camel.create_value("john@example.com")
-        self.assertEqual(email_data.capabilities.risk, RiskLevel.HIGH)
+    def test_dangerous_operation_with_untrusted_data(self):
+        """Dangerous operation with untrusted data blocked test"""
+        untrusted_data = self.interpreter.create_value("user_data", Source.USER, Reader.PUBLIC)
+        result = self.interpreter.execute_operation("write", untrusted_data)
         
-        # HIGH 위험 데이터로 이메일 시도 → 차단
-        email_result = self.camel.execute("email", email_data, self.camel.create_value("message"))
-        self.assertIn("Security violation", email_result.value)
-        
-        # LOW 위험 데이터로 이메일 시도 → 허용 (CAMEL 소스이므로)
-        safe_data = self.camel.create_value("safe message", Source.CAMEL, RiskLevel.LOW)
-        safe_email = self.camel.execute("email", safe_data, self.camel.create_value("message"))
-        # 이메일은 LOW 위험도도 차단하므로 Security violation이 나와야 함
-        self.assertIn("Security violation", safe_email.value)
+        self.assertIn("Security policy violation", result.value)
+        self.assertEqual(result.capabilities.source, Source.CAMEL)
     
-    def test_single_gateway_pattern(self):
-        """단일 게이트웨이 패턴 테스트: 모든 툴 호출이 execute()를 통해서만 가능"""
-        # 1. execute()를 통한 정상 호출
-        data = self.camel.create_value("test data", Source.USER)
-        result = self.camel.execute("print", data)
-        self.assertIn("test data", result.value)
+    def test_unknown_operation(self):
+        """Unknown operation test"""
+        data = self.interpreter.create_value("test", Source.USER, Reader.PUBLIC)
+        result = self.interpreter.execute_operation("unknown_op", data)
         
-        # 2. execute()를 통한 차단
-        write_result = self.camel.execute("write", data)
-        self.assertIn("Security violation", write_result.value)
+        self.assertIn("Unknown operation: unknown_op", result.value)
+        self.assertEqual(result.capabilities.source, Source.CAMEL)
+    
+    def test_file_operations(self):
+        """File operations test"""
+        # Attempt to delete untrusted file (blocked)
+        user_file = self.interpreter.create_value("user_file.txt", Source.USER, Reader.PUBLIC)
+        result1 = self.interpreter.execute_operation("delete", user_file)
+        self.assertIn("Security policy violation", result1.value)
         
-        # 3. 직접 툴 호출 시도 (차단됨)
-        with self.assertRaises(AttributeError):
-            self.camel.pllm._block_direct_access()
+        # Delete trusted file (allowed)
+        trusted_file = self.interpreter.create_value("system.log", Source.CAMEL, Reader.PUBLIC)
+        result2 = self.interpreter.execute_operation("delete", trusted_file)
+        self.assertIn("File deleted: system.log", result2.value)
+    
+    def test_email_operations(self):
+        """Email operations test"""
+        recipient = self.interpreter.create_value("user@example.com", Source.USER, Reader.PUBLIC)
+        content = self.interpreter.create_value("user message", Source.USER, Reader.PUBLIC)
         
-        # 4. 알 수 없는 작업
-        unknown_result = self.camel.execute("unknown_op", data)
-        self.assertIn("Unknown: unknown_op", unknown_result.value)
+        # Attempt to send email with user data (blocked)
+        result = self.interpreter.execute_operation("email", recipient, content)
+        self.assertIn("Security policy violation", result.value)
+        
+        # Send email with trusted data (allowed)
+        trusted_recipient = self.interpreter.create_value("admin@company.com", Source.CAMEL, Reader.PUBLIC)
+        trusted_content = self.interpreter.create_value("system notification", Source.CAMEL, Reader.PUBLIC)
+        result2 = self.interpreter.execute_operation("email", trusted_recipient, trusted_content)
+        self.assertIn("Email sent: admin@company.com - system notification", result2.value)
+
+class TestIntegration(unittest.TestCase):
+    """Integration tests"""
+    
+    def test_complete_workflow(self):
+        """Complete workflow test"""
+        interpreter = MiniCaMeLInterpreter()
+        
+        # 1. Create user data
+        user_data = interpreter.create_value("user request", Source.USER, Reader.PUBLIC)
+        
+        # 2. Execute safe operation (allowed)
+        print_result = interpreter.execute_operation("print", user_data)
+        self.assertIn("Output: user request", print_result.value)
+        
+        # 3. Execute dangerous operation (blocked)
+        write_result = interpreter.execute_operation("write", user_data)
+        self.assertIn("Security policy violation", write_result.value)
+        
+        # 4. Execute dangerous operation with trusted data (allowed)
+        trusted_data = interpreter.create_value("system data", Source.CAMEL, Reader.PUBLIC)
+        trusted_write_result = interpreter.execute_operation("write", trusted_data)
+        self.assertIn("Write complete: system data", trusted_write_result.value)
+
+def run_tests():
+    """Run tests"""
+    print("=== Mini CaMeL Test Started ===\n")
+    
+    # Create test suite
+    test_suite = unittest.TestSuite()
+    
+    # Add test classes
+    test_classes = [
+        TestCaMeLValue,
+        TestSecurityPolicy,
+        TestMiniCaMeLInterpreter,
+        TestIntegration
+    ]
+    
+    for test_class in test_classes:
+        tests = unittest.TestLoader().loadTestsFromTestCase(test_class)
+        test_suite.addTests(tests)
+    
+    # Run tests
+    runner = unittest.TextTestRunner(verbosity=2)
+    result = runner.run(test_suite)
+    
+    print(f"\n=== Test Results ===")
+    print(f"Tests run: {result.testsRun}")
+    print(f"Failures: {len(result.failures)}")
+    print(f"Errors: {len(result.errors)}")
+    
+    if result.failures:
+        print("\nFailed tests:")
+        for test, traceback in result.failures:
+            print(f"  - {test}: {traceback}")
+    
+    if result.errors:
+        print("\nTests with errors:")
+        for test, traceback in result.errors:
+            print(f"  - {test}: {traceback}")
+    
+    return result.wasSuccessful()
 
 class TestPolicyRegistry(unittest.TestCase):
     def setUp(self):
@@ -632,4 +759,5 @@ class TestQLLMSchemaLoop(unittest.TestCase):
             self.assertIsInstance(e, (NotEnoughInformationError, Exception))
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    success = run_tests()
+    exit(0 if success else 1)
