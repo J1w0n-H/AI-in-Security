@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 from mini_camel import (
     CaMeL, CaMeLValue, Capabilities, Source, Reader, RiskLevel,
     SecurityPolicy, SecurityPolicyResult, PLLM, QLLM, NotEnoughInformationError,
-    infer_risk_from_value
+    infer_risk_from_value, Readers
 )
 from pydantic import BaseModel
 
@@ -33,6 +33,23 @@ class TestCapabilities(unittest.TestCase):
         self.assertFalse(low_cap.is_medium_risk())
         self.assertTrue(medium_cap.is_medium_risk())
         self.assertTrue(high_cap.is_high_risk())
+    
+    def test_readers_and_provenance(self):
+        # Public 데이터
+        public_cap = Capabilities(Source.USER, Reader.PUBLIC, readers="Public")
+        self.assertTrue(public_cap.is_public())
+        self.assertTrue(public_cap.readers_include({"user1", "user2"}))
+        
+        # 특정 사용자 집합
+        private_cap = Capabilities(Source.USER, Reader.PUBLIC, readers={"user1", "user2"})
+        self.assertFalse(private_cap.is_public())
+        self.assertTrue(private_cap.readers_include({"user1"}))
+        self.assertTrue(private_cap.readers_include({"user1", "user2"}))
+        self.assertFalse(private_cap.readers_include({"user3"}))
+        
+        # Provenance 테스트
+        camel_cap = Capabilities(Source.CAMEL, Reader.PUBLIC, provenance="camel")
+        self.assertEqual(camel_cap.provenance, "camel")
 
 class TestRiskInference(unittest.TestCase):
     def test_risk_inference(self):
@@ -100,6 +117,32 @@ class TestSecurityPolicy(unittest.TestCase):
         self.assertEqual(result3.reason_code, "RISK_THRESHOLD_EXCEEDED")
         self.assertEqual(result4.reason_code, "RISK_THRESHOLD_EXCEEDED")
         self.assertEqual(result5.reason_code, "RISK_THRESHOLD_EXCEEDED")
+    
+    def test_recipient_checks(self):
+        # 수신자 집합 검사 테스트
+        policy = SecurityPolicy()
+        
+        # Public 데이터는 모든 수신자 허용
+        public_content = CaMeLValue("public message", 
+                                  Capabilities(Source.CAMEL, Reader.PUBLIC, readers="Public"))
+        recipient1 = CaMeLValue("user1", Capabilities(Source.USER, Reader.PUBLIC))
+        
+        result1 = policy._check_recipients("email", {"arg_0": recipient1, "arg_1": public_content})
+        self.assertTrue(result1.allowed)
+        
+        # 특정 사용자 집합 데이터
+        private_content = CaMeLValue("private message", 
+                                   Capabilities(Source.CAMEL, Reader.PUBLIC, readers={"user1", "user2"}))
+        
+        # 허용된 수신자
+        result2 = policy._check_recipients("email", {"arg_0": recipient1, "arg_1": private_content})
+        self.assertTrue(result2.allowed)
+        
+        # 차단된 수신자
+        recipient2 = CaMeLValue("user3", Capabilities(Source.USER, Reader.PUBLIC))
+        result3 = policy._check_recipients("email", {"arg_0": recipient2, "arg_1": private_content})
+        self.assertFalse(result3.allowed)
+        self.assertEqual(result3.reason_code, "READER_MISMATCH")
 
 class TestPLLM(unittest.TestCase):
     def setUp(self):

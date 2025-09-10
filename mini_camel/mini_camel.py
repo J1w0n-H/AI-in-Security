@@ -9,7 +9,7 @@ CaMeL 논문의 핵심만 구현:
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Type, Optional
+from typing import Any, Dict, Type, Optional, Union, Set
 import json
 import ollama
 import re
@@ -27,6 +27,9 @@ class Reader(Enum):
     PUBLIC = "public"
     PRIVATE = "private"
 
+# Readers는 "Public" 문자열 또는 구체적인 사용자 ID 집합
+Readers = Union[str, Set[str]]
+
 class RiskLevel(Enum):
     LOW = 1      # 안전한 데이터 (기본값)
     MEDIUM = 3   # 중간 위험 데이터
@@ -36,7 +39,10 @@ class RiskLevel(Enum):
 class Capabilities:
     source: Source
     reader: Reader
-    risk: RiskLevel = RiskLevel.LOW  # 기본값은 LOW
+    risk: RiskLevel = RiskLevel.LOW
+    readers: Readers = "Public"  # "Public" 또는 구체적인 사용자 ID 집합
+    provenance: str = "user"  # "user", "camel", "tool_id", "qllm"
+    inner_source: Optional[str] = None  # 내부 소스 정보
     
     def is_trusted(self) -> bool:
         return self.source == Source.CAMEL
@@ -46,6 +52,18 @@ class Capabilities:
     
     def is_medium_risk(self) -> bool:
         return self.risk == RiskLevel.MEDIUM
+    
+    def is_public(self) -> bool:
+        """데이터가 공개 데이터인지 확인"""
+        return self.readers == "Public"
+    
+    def readers_include(self, principals: Set[str]) -> bool:
+        """지정된 사용자들이 읽기 권한을 가지는지 확인"""
+        if self.is_public():
+            return True
+        if isinstance(self.readers, set):
+            return principals.issubset(self.readers)
+        return False
 
 @dataclass
 class CaMeLValue:
@@ -124,6 +142,8 @@ class SecurityPolicy:
             "delete": RiskLevel.LOW,      # LOW 이상 위험 데이터로 삭제 차단
             "email": RiskLevel.LOW,       # LOW 이상 위험 데이터로 이메일 차단
         }
+        # 수신자 검사가 필요한 작업들
+        self.recipient_ops = {"email", "event"}
     
     def check_access(self, operation: str, args: Dict[str, CaMeLValue]) -> SecurityPolicyResult:
         # 1. 위험한 작업에 신뢰할 수 없는 데이터 사용 시 하드 차단
@@ -135,7 +155,13 @@ class SecurityPolicy:
                         f"Operation '{operation}' blocked: untrusted data in '{arg_name}'"
                     )
         
-        # 2. 위험도 임계치 기반 차단 (신뢰할 수 있는 데이터도 위험도 검사)
+        # 2. 수신자 집합 검사 (이메일/이벤트 등)
+        if operation in self.recipient_ops:
+            recipient_check = self._check_recipients(operation, args)
+            if not recipient_check.allowed:
+                return recipient_check
+        
+        # 3. 위험도 임계치 기반 차단
         if operation in self.risk_thresholds:
             threshold = self.risk_thresholds[operation]
             for arg_name, arg in args.items():
@@ -143,6 +169,23 @@ class SecurityPolicy:
                     return SecurityPolicyResult.deny(
                         "RISK_THRESHOLD_EXCEEDED",
                         f"Operation '{operation}' blocked: risk level {arg.capabilities.risk.name} exceeds threshold {threshold.name} for '{arg_name}'"
+                    )
+        
+        return SecurityPolicyResult.allow()
+    
+    def _check_recipients(self, operation: str, args: Dict[str, CaMeLValue]) -> SecurityPolicyResult:
+        """수신자 집합 검사"""
+        # 이메일의 경우 recipient와 content 모두 검사
+        if operation == "email":
+            recipient = args.get("arg_0")  # 첫 번째 인자가 recipient
+            content = args.get("arg_1")    # 두 번째 인자가 content
+            
+            if recipient and content:
+                # 수신자가 content의 readers에 포함되는지 확인
+                if not content.capabilities.readers_include({recipient.value}):
+                    return SecurityPolicyResult.deny(
+                        "READER_MISMATCH",
+                        f"Email recipient '{recipient.value}' not in content readers"
                     )
         
         return SecurityPolicyResult.allow()
@@ -285,11 +328,23 @@ class CaMeL:
         return self.pllm.process_query(query)
     
     def create_value(self, value: Any, source: Source = Source.USER, 
-                    risk: Optional[RiskLevel] = None) -> CaMeLValue:
+                    risk: Optional[RiskLevel] = None, readers: Readers = "Public",
+                    provenance: str = "user", inner_source: Optional[str] = None) -> CaMeLValue:
         if risk is None:
             risk = infer_risk_from_value(value)
         
-        return CaMeLValue(value, Capabilities(source, Reader.PUBLIC, risk))
+        # CAMEL 소스인 경우 자동으로 provenance 설정
+        if source == Source.CAMEL:
+            provenance = "camel"
+        
+        return CaMeLValue(value, Capabilities(
+            source=source, 
+            reader=Reader.PUBLIC, 
+            risk=risk,
+            readers=readers,
+            provenance=provenance,
+            inner_source=inner_source
+        ))
     
     def execute(self, operation: str, *args: CaMeLValue) -> CaMeLValue:
         """단일 게이트웨이: 모든 툴 호출은 여기서만 허용"""
@@ -332,8 +387,21 @@ def main():
     print(f"Print: {print_result.value}")
     print(f"Write: {write_result.value}")
     
-    # 3. QLLM 실제 호출
-    print("\n3. QLLM (Actual LLM)")
+    # 3. Readers/Provenance 테스트
+    print("\n3. Readers/Provenance")
+    
+    # Public 데이터
+    public_data = camel.create_value("public info", readers="Public")
+    print(f"Public data: {public_data.capabilities.is_public()}")
+    
+    # Private 데이터 (특정 사용자만)
+    private_data = camel.create_value("private info", readers={"user1", "user2"})
+    print(f"Private data readers: {private_data.capabilities.readers}")
+    print(f"User1 can read: {private_data.capabilities.readers_include({'user1'})}")
+    print(f"User3 can read: {private_data.capabilities.readers_include({'user3'})}")
+    
+    # 4. QLLM 실제 호출
+    print("\n4. QLLM (Actual LLM)")
     from pydantic import BaseModel
     
     class UserInfo(BaseModel):
