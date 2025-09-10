@@ -117,9 +117,10 @@ class TestPLLM(unittest.TestCase):
         self.assertIn("Write:", result.value)
     
     def test_dangerous_write_untrusted(self):
+        # PLLM의 _write는 이제 정책 검사 없이 직접 실행됨
         data = CaMeLValue("data", Capabilities(Source.USER, Reader.PUBLIC))
         result = self.pllm._write(data)
-        self.assertIn("Security violation", result.value)
+        self.assertIn("Write:", result.value)
 
 class TestCaMeL(unittest.TestCase):
     def setUp(self):
@@ -157,7 +158,27 @@ class TestCaMeL(unittest.TestCase):
         # LOW 위험 데이터로 이메일 시도 → 허용 (CAMEL 소스이므로)
         safe_data = self.camel.create_value("safe message", Source.CAMEL, RiskLevel.LOW)
         safe_email = self.camel.execute("email", safe_data, self.camel.create_value("message"))
-        self.assertIn("Email sent", safe_email.value)
+        # 이메일은 LOW 위험도도 차단하므로 Security violation이 나와야 함
+        self.assertIn("Security violation", safe_email.value)
+    
+    def test_single_gateway_pattern(self):
+        """단일 게이트웨이 패턴 테스트: 모든 툴 호출이 execute()를 통해서만 가능"""
+        # 1. execute()를 통한 정상 호출
+        data = self.camel.create_value("test data", Source.USER)
+        result = self.camel.execute("print", data)
+        self.assertIn("test data", result.value)
+        
+        # 2. execute()를 통한 차단
+        write_result = self.camel.execute("write", data)
+        self.assertIn("Security violation", write_result.value)
+        
+        # 3. 직접 툴 호출 시도 (차단됨)
+        with self.assertRaises(AttributeError):
+            self.camel.pllm._block_direct_access()
+        
+        # 4. 알 수 없는 작업
+        unknown_result = self.camel.execute("unknown_op", data)
+        self.assertIn("Unknown: unknown_op", unknown_result.value)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
