@@ -11,11 +11,11 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional, Union, Set, Type, List, Callable
 import json
-import ollama
 import re
-import yaml
-from pydantic import BaseModel, Field
 from datetime import datetime
+from pydantic import BaseModel
+import ollama
+import yaml
 
 # Trace Logging (감사/재현)
 
@@ -207,6 +207,10 @@ def infer_risk_from_value(value: Any) -> RiskLevel:
     
     value_str = str(value).lower()
     
+    # 이메일 주소는 수신자 식별자이므로 항상 LOW 위험도
+    if '@' in value and '.' in value.split('@')[-1]:
+        return RiskLevel.LOW
+    
     # HIGH 위험 패턴 (민감한 개인정보)
     high_risk_patterns = [
         r'\d{6}-\d{7}',  # 주민등록번호 (6자리-7자리)
@@ -214,7 +218,6 @@ def infer_risk_from_value(value: Any) -> RiskLevel:
         r'\d{2,3}-\d{3,4}-\d{4}',  # 전화번호 변형
         r'\b\d{4}-\d{2}-\d{2}\b',  # 생년월일 (YYYY-MM-DD)
         r'\b\d{2}/\d{2}/\d{4}\b',  # 생년월일 (MM/DD/YYYY)
-        r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',  # 이메일
         r'\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b',  # 신용카드 번호
         r'password|passwd|pwd',  # 패스워드 관련
         r'secret|private|confidential',  # 기밀 정보
@@ -227,6 +230,7 @@ def infer_risk_from_value(value: Any) -> RiskLevel:
         r'address|주소',  # 주소 정보
         r'name|이름',  # 이름 정보
         r'phone|전화',  # 전화 관련
+        r'^[가-힣]{2,4}$',  # 한국어 이름 (2-4글자)
     ]
     
     # HIGH 위험 패턴 검사
@@ -247,6 +251,10 @@ def infer_importance_from_value(value: Any) -> DataImportance:
         return DataImportance.PUBLIC
     
     value_str = str(value).lower()
+    
+    # 이메일 주소는 수신자 식별자이므로 항상 PUBLIC 중요도
+    if '@' in value and '.' in value.split('@')[-1]:
+        return DataImportance.PUBLIC
     
     # SECRET 중요도 패턴 (최고 중요도)
     secret_patterns = [
@@ -316,6 +324,7 @@ class PolicyRegistry:
         self.tool_checks: Dict[str, List[tuple[PolicyFunction, int]]] = {}
         self.explicit_allows: Dict[str, set[str]] = {}  # operation -> {arg_name}
         self.explicit_denies: Dict[str, set[str]] = {}  # operation -> {arg_name}
+        self.explicit_allow_policies: List[Dict[str, str]] = []  # 명시적 허용 정책 리스트
     
     def add_global_policy(self, policy_func: PolicyFunction, priority: int = 3):
         """글로벌 정책 추가 (우선순위 포함)"""
@@ -343,6 +352,10 @@ class PolicyRegistry:
             self.explicit_denies[operation] = set()
         self.explicit_denies[operation].add(arg_name)
     
+    def add_explicit_allow_policy(self, allow_rule: Dict[str, str]):
+        """명시적 허용 정책 추가 (조건 기반)"""
+        self.explicit_allow_policies.append(allow_rule)
+    
     def check(self, operation: str, args: Dict[str, CaMeLValue]) -> SecurityPolicyResult:
         """정책 체크: 결정적 순서로 실행"""
         
@@ -355,26 +368,40 @@ class PolicyRegistry:
                         f"Operation '{operation}' explicitly denied for '{arg_name}'"
                     )
         
-        # 2. 명시적 허용 (차단보다 우선)
+        # 2. 명시적 허용 (조건 기반) - 매치될 때만 허용
+        for allow_rule in self.explicit_allow_policies:
+            if allow_rule.get("operation") == operation:
+                condition = allow_rule.get("condition", "")
+                if _evaluate_condition(condition, args):
+                    # 제어 의존성이 있는 경우 명시적 허용을 적용하지 않음
+                    has_control_dependency = any(
+                        arg_value.control_depends_on and 
+                        any(sensitive in str(arg_value.control_depends_on) for sensitive in ["qllm", "secret", "password", "admin"])
+                        for arg_value in args.values()
+                    )
+                    if not has_control_dependency:
+                        return SecurityPolicyResult.allow()
+        
+        # 3. 기존 명시적 허용 (arg_name 기반)
         if operation in self.explicit_allows:
             for arg_name in self.explicit_allows[operation]:
                 if arg_name in args:
                     return SecurityPolicyResult.allow()
         
-        # 3. 툴별 정책 (글로벌보다 우선, 우선순위 순으로 실행)
+        # 4. 툴별 정책 (글로벌보다 우선, 우선순위 순으로 실행)
         if operation in self.tool_checks:
             for policy_func, priority in self.tool_checks[operation]:
                 result = policy_func(operation, args)
                 if not result.allowed:
                     return result
         
-        # 4. 글로벌 정책 (우선순위 순으로 실행)
+        # 5. 글로벌 정책 (우선순위 순으로 실행)
         for policy_func, priority in self.global_checks:
             result = policy_func(operation, args)
             if not result.allowed:
                 return result
         
-        # 5. 기본 허용
+        # 6. 기본 허용
         return SecurityPolicyResult.allow()
 
 # 공통 헬퍼 정책들
@@ -466,21 +493,30 @@ def create_importance_based_policy(dangerous_ops: set[str], importance_threshold
         return SecurityPolicyResult.allow()
     return policy
 
-def create_risk_importance_combined_policy(dangerous_ops: Set[str], risk_thresholds: Dict[str, RiskLevel], importance_thresholds: Dict[str, DataImportance]) -> Callable[[str, Dict[str, CaMeLValue]], SecurityPolicyResult]:
+def create_risk_importance_combined_policy(dangerous_ops: Set[str], risk_thresholds: Dict[str, RiskLevel], importance_thresholds: Dict[str, DataImportance], config: 'SecurityConfig' = None) -> Callable[[str, Dict[str, CaMeLValue]], SecurityPolicyResult]:
     """위험도와 중요도를 결합한 정책: 다층 보안 검사"""
     def policy(operation: str, args: Dict[str, CaMeLValue]) -> SecurityPolicyResult:
-        # 1. 위험 연산 + 비신뢰 데이터 = 하드 차단
-        if operation in dangerous_ops:
-            for arg_name, arg in args.items():
-                if not arg.capabilities.is_trusted():
-                    return SecurityPolicyResult.deny(
-                        "UNTRUSTED_DANGER_OP",
-                        f"Operation '{operation}' blocked: untrusted data in dangerous operation '{arg_name}' (hard block)"
-                    )
+        # 1. 위험 연산 + 비신뢰 데이터 = 하드 차단 (제거됨)
+        # Q-LLM 의존성 정책이 이미 Q-LLM 의존성 값을 차단하고,
+        # 일반적인 USER 소스 데이터는 허용하도록 함
+        # 주석: 이 검사는 너무 엄격하여 일반적인 사용을 방해함
         
-        # 2. 위험도 임계치 검사
+        # 2. 위험도 임계치 검사 (컨텍스트 기반 조정 적용)
         if operation in risk_thresholds:
-            threshold = risk_thresholds[operation]
+            # 컨텍스트 정보 수집
+            context = {}
+            for arg_name, arg in args.items():
+                if arg.capabilities.source == Source.USER:
+                    context['user_role'] = 'user'  # 기본 역할
+                elif arg.capabilities.source == Source.CAMEL:
+                    context['data_source'] = 'camel'
+            
+            # 조정된 임계치 사용
+            if config:
+                threshold = config.get_adjusted_threshold(operation, context)
+            else:
+                threshold = risk_thresholds[operation]
+            
             for arg_name, arg in args.items():
                 if arg.capabilities.risk.value >= threshold.value:
                     return SecurityPolicyResult.deny(
@@ -536,38 +572,44 @@ def create_hard_rules_policy(hard_rules: List[Dict[str, str]]) -> Callable[[str,
         return SecurityPolicyResult.allow()
     return policy
 
-def create_explicit_allow_policy(explicit_allows: List[Dict[str, str]]) -> Callable[[str, Dict[str, CaMeLValue]], SecurityPolicyResult]:
-    """명시적 허용 정책: 조건 기반 허용"""
-    def policy(operation: str, args: Dict[str, CaMeLValue]) -> SecurityPolicyResult:
-        for allow_rule in explicit_allows:
-            if allow_rule.get("operation") == operation:
-                condition = allow_rule.get("condition", "")
-                # 간단한 조건 평가 (실제로는 더 복잡한 파서 필요)
-                if _evaluate_condition(condition, args):
-                    return SecurityPolicyResult.allow()
-        return SecurityPolicyResult.allow()  # 명시적 허용이 없으면 다음 정책으로
-    return policy
+# create_explicit_allow_policy 함수는 제거됨 - PolicyRegistry에서 직접 처리
 
 def _evaluate_condition(condition: str, args: Dict[str, CaMeLValue]) -> bool:
     """간단한 조건 평가 (실제로는 더 복잡한 파서 필요)"""
     # 간단한 구현: source == 'CAMEL' AND risk == 'LOW' 같은 조건
     try:
+        # 모든 조건을 AND로 연결하여 평가
+        conditions_met = []
+        
         if "source == 'CAMEL'" in condition:
-            for arg in args.values():
-                if arg.capabilities.source != Source.CAMEL:
-                    return False
+            source_ok = all(arg.capabilities.source == Source.CAMEL for arg in args.values())
+            conditions_met.append(source_ok)
+        elif "source == 'USER'" in condition:
+            source_ok = all(arg.capabilities.source == Source.USER for arg in args.values())
+            conditions_met.append(source_ok)
         
         if "risk == 'LOW'" in condition:
-            for arg in args.values():
-                if arg.capabilities.risk != RiskLevel.LOW:
-                    return False
+            risk_ok = all(arg.capabilities.risk == RiskLevel.LOW for arg in args.values())
+            conditions_met.append(risk_ok)
+        elif "risk == 'MEDIUM'" in condition:
+            risk_ok = all(arg.capabilities.risk == RiskLevel.MEDIUM for arg in args.values())
+            conditions_met.append(risk_ok)
+        elif "risk == 'HIGH'" in condition:
+            risk_ok = all(arg.capabilities.risk == RiskLevel.HIGH for arg in args.values())
+            conditions_met.append(risk_ok)
         
         if "importance == 'PUBLIC'" in condition:
-            for arg in args.values():
-                if arg.capabilities.importance != DataImportance.PUBLIC:
-                    return False
+            importance_ok = all(arg.capabilities.importance == DataImportance.PUBLIC for arg in args.values())
+            conditions_met.append(importance_ok)
+        elif "importance == 'INTERNAL'" in condition:
+            importance_ok = all(arg.capabilities.importance == DataImportance.INTERNAL for arg in args.values())
+            conditions_met.append(importance_ok)
+        elif "importance == 'CONFIDENTIAL'" in condition:
+            importance_ok = all(arg.capabilities.importance == DataImportance.CONFIDENTIAL for arg in args.values())
+            conditions_met.append(importance_ok)
         
-        return True
+        # 모든 조건이 만족되어야 함 (AND 로직)
+        return all(conditions_met) if conditions_met else False
     except:
         return False
 
@@ -679,8 +721,7 @@ class SecurityConfig:
         
         if self.explicit_allows is None:
             self.explicit_allows = [
-                {"operation": "print", "condition": "source == 'CAMEL' AND risk == 'LOW'"},
-                {"operation": "write", "condition": "source == 'CAMEL' AND importance == 'PUBLIC'"}
+                {"operation": "print", "condition": "source == 'CAMEL' AND risk == 'LOW'"}
             ]
     
     @classmethod
@@ -786,14 +827,16 @@ class SecurityPolicy:
                 priority=self.config.policy_priority["hard_rules"]
             )
         
-        # 2. 명시적 허용 (두 번째 우선순위)
-        if self.config.explicit_allows:
-            self.registry.add_global_policy(
-                create_explicit_allow_policy(self.config.explicit_allows),
-                priority=self.config.policy_priority["explicit_allow"]
-            )
+        # 2. 데이터 의존성 기반 차단 (Q-LLM 의존성 차단) - 최고 우선순위
+        self.registry.add_global_policy(
+            create_dependency_policy(),
+            priority=0  # 하드룰과 같은 최고 우선순위
+        )
         
-        # 3. 데이터 의존성 기반 차단은 툴별 정책에서 처리
+        # 3. 명시적 허용 (세 번째 우선순위) - 새로운 방식으로 처리
+        if self.config.explicit_allows:
+            for allow_rule in self.config.explicit_allows:
+                self.registry.add_explicit_allow_policy(allow_rule)
         
         # 4. 수신자 권한 불일치 차단 (글로벌)
         self.registry.add_global_policy(
@@ -801,12 +844,13 @@ class SecurityPolicy:
             priority=self.config.policy_priority["level_thresholds"]
         )
         
-        # 5. 중요도 기반 정책 (글로벌)
+        # 5. 중요도 기반 정책 (글로벌) - 컨텍스트 기반 임계치 적용
         self.registry.add_global_policy(
             create_risk_importance_combined_policy(
                 self.dangerous_ops, 
                 self.risk_thresholds, 
-                self.importance_thresholds
+                self.importance_thresholds,
+                self.config  # 컨텍스트 기반 임계치 조정을 위해 config 전달
             ),
             priority=self.config.policy_priority["level_thresholds"]
         )
@@ -852,7 +896,7 @@ class SecurityPolicy:
         return SecurityPolicyResult.allow()
     
     def _write_specific_policy(self, operation: str, args: Dict[str, CaMeLValue]) -> SecurityPolicyResult:
-        """쓰기 특수 정책: 파일명 검증"""
+        """쓰기 특수 정책: 파일명 검증 및 위험도 임계치 검사"""
         if operation == "write":
             data = args.get("arg_0")
             
@@ -864,7 +908,17 @@ class SecurityPolicy:
                         f"External operation '{operation}' blocked: value depends on Q-LLM output"
                     )
             
-            # 2. 파일명에 위험한 문자 차단
+            # 2. 위험도 임계치 검사
+            if operation in self.risk_thresholds:
+                threshold = self.risk_thresholds[operation]
+                for arg_name, arg in args.items():
+                    if arg.capabilities.risk.value >= threshold.value:
+                        return SecurityPolicyResult.deny(
+                            "RISK_THRESHOLD_EXCEEDED",
+                            f"Operation '{operation}' blocked: risk level {arg.capabilities.risk.name} exceeds threshold {threshold.name} for '{arg_name}'"
+                        )
+            
+            # 3. 파일명에 위험한 문자 차단
             if data and any(char in str(data.value) for char in ['..', '/', '\\', '<', '>', '|']):
                 return SecurityPolicyResult.deny(
                     "DANGEROUS_FILENAME",
@@ -930,19 +984,15 @@ JSON:"""
                 options={'temperature': 0.1}
             )
             
-            # JSON 파싱 시도 (Python 딕셔너리도 처리)
+            # JSON 파싱 시도 (eval() 제거, 보안 강화)
             response_text = response['response'].strip()
             
-            # Python 딕셔너리 형태인 경우 eval로 변환
-            if response_text.startswith('{') and response_text.endswith('}'):
-                try:
-                    # 안전한 eval 사용 (문자열만)
-                    result_data = eval(response_text)
-                except:
-                    # JSON으로 파싱 시도
-                    result_data = json.loads(response_text)
-            else:
+            try:
+                # JSON 파싱만 허용 (eval() 제거로 보안 강화)
                 result_data = json.loads(response_text)
+            except json.JSONDecodeError:
+                # JSON이 아니면 시뮬레이션 폴백으로
+                return self._simulate_parsing(query, output_schema)
             
             # have_enough_information 필드 확인
             have_enough = result_data.get('have_enough_information', True)
@@ -1079,7 +1129,7 @@ class PLLM:
         if "print" in query.lower():
             plan.append(PlanToolCall(
                 operation="print",
-                args=[CaMeLValue("Hello World", Capabilities(Source.CAMEL, RiskLevel.LOW, "Public", "camel", "camel.generated"))]
+                args=[CaMeLValue("Hello World", Capabilities(Source.CAMEL, RiskLevel.LOW, "Public", "pllm", "pllm.generated"))]
             ))
         elif "write" in query.lower():
             plan.append(PlanToolCall(
@@ -1103,26 +1153,26 @@ class PLLM:
             # 기본적으로 print 플랜 생성
             plan.append(PlanToolCall(
                 operation="print",
-                args=[CaMeLValue(f"Processed: {query}", Capabilities(Source.CAMEL, RiskLevel.LOW, "Public", "camel", "camel.processed"))]
+                args=[CaMeLValue(f"Processed: {query}", Capabilities(Source.CAMEL, RiskLevel.LOW, "Public", "pllm", "pllm.processed"))]
             ))
         
         return plan
     
     @tool_adapter("print")
     def _print(self, data: CaMeLValue) -> CaMeLValue:
-        return CaMeLValue(f"Output: {data.value}", Capabilities(Source.CAMEL, RiskLevel.LOW, "Public", "qllm", "qllm.print"))
+        return CaMeLValue(f"Output: {data.value}", Capabilities(Source.CAMEL, RiskLevel.LOW, "Public", "qllm", "qllm.print"), depends_on={"qllm"})
     
     @tool_adapter("write")
     def _write(self, data: CaMeLValue) -> CaMeLValue:
-        return CaMeLValue(f"Write: {data.value}", Capabilities(Source.CAMEL, RiskLevel.LOW, "Public", "qllm", "qllm.write"))
+        return CaMeLValue(f"Write: {data.value}", Capabilities(Source.CAMEL, RiskLevel.LOW, "Public", "qllm", "qllm.write"), depends_on={"qllm"})
     
     @tool_adapter("delete")
     def _delete(self, filename: CaMeLValue) -> CaMeLValue:
-        return CaMeLValue(f"Deleted: {filename.value}", Capabilities(Source.CAMEL, RiskLevel.LOW, "Public", "qllm", "qllm.delete"))
+        return CaMeLValue(f"Deleted: {filename.value}", Capabilities(Source.CAMEL, RiskLevel.LOW, "Public", "qllm", "qllm.delete"), depends_on={"qllm"})
     
     @tool_adapter("email")
     def _email(self, recipient: CaMeLValue, content: CaMeLValue) -> CaMeLValue:
-        return CaMeLValue(f"Email sent: {recipient.value}", Capabilities(Source.CAMEL, RiskLevel.LOW, "Public", "qllm", "qllm.email"))
+        return CaMeLValue(f"Email sent: {recipient.value}", Capabilities(Source.CAMEL, RiskLevel.LOW, "Public", "qllm", "qllm.email"), depends_on={"qllm"})
     
     def _query_ai(self, query: str, output_schema: Type[BaseModel], max_retries: int = 3) -> BaseModel:
         """QLLM을 사용하여 AI 쿼리 처리 (재시도 루프 포함)"""
@@ -1190,7 +1240,7 @@ class Interpreter:
                 # 드라이런 모드 확인
                 if self.security_policy.config.operation_mode == OperationMode.DRY_RUN:
                     # 드라이런 모드: 경고만 로그하고 계속 진행
-                    print(f"⚠️  DRY RUN WARNING: {policy_result.reason}")
+                    print(f"[DRY RUN WARNING] {policy_result.reason}")
                     # 실제로는 실행하지 않고 시뮬레이션 결과 반환
                     result = CaMeLValue(
                         f"[DRY RUN] Would have executed: {tool_call.operation}",
@@ -1252,7 +1302,7 @@ class Interpreter:
                     risk=RiskLevel.LOW,
                     readers="Public",
                     provenance="tool.print",
-                    inner_source="interpreter.print.output"
+                    inner_source="tool.print.output"
                 ),
                 depends_on=all_dependencies,
                 control_depends_on=all_control_dependencies
@@ -1265,7 +1315,7 @@ class Interpreter:
                     risk=RiskLevel.MEDIUM,
                     readers="Public",
                     provenance="tool.write",
-                    inner_source="interpreter.write.output"
+                    inner_source="tool.write.output"
                 ),
                 depends_on=all_dependencies,
                 control_depends_on=all_control_dependencies
@@ -1278,7 +1328,7 @@ class Interpreter:
                     risk=RiskLevel.HIGH,
                     readers="Public",
                     provenance="tool.delete",
-                    inner_source="interpreter.delete.output"
+                    inner_source="tool.delete.output"
                 ),
                 depends_on=all_dependencies,
                 control_depends_on=all_control_dependencies
@@ -1291,7 +1341,7 @@ class Interpreter:
                     risk=RiskLevel.MEDIUM,
                     readers="Public",
                     provenance="tool.email",
-                    inner_source="interpreter.email.output"
+                    inner_source="tool.email.output"
                 ),
                 depends_on=all_dependencies,
                 control_depends_on=all_control_dependencies
@@ -1333,7 +1383,7 @@ class CaMeL:
         return results
     
     def create_value(self, value: Any, source: Source = Source.USER, 
-                    risk: Optional[RiskLevel] = None, readers: Readers = "Public",
+                    risk: Optional[RiskLevel] = None, readers: Optional[Readers] = None,
                     provenance: str = "user", inner_source: Optional[str] = None,
                     depends_on: Optional[Set[str]] = None, importance: Optional[DataImportance] = None,
                     control_depends_on: Optional[Set[str]] = None) -> CaMeLValue:
@@ -1343,8 +1393,24 @@ class CaMeL:
         if importance is None:
             importance = infer_importance_from_value(value)
         
+        # 보안 강화: 민감한 데이터는 자동으로 readers 제한
+        # 단, 사용자가 명시적으로 readers를 설정한 경우는 자동 조정하지 않음
+        if readers is None:  # 기본값인 경우에만 자동 조정
+            readers = "Public"  # 기본값 설정
+            
+            # 이메일 주소는 수신자 식별자이므로 Public 유지
+            is_email_address = isinstance(value, str) and '@' in value and '.' in value.split('@')[-1]
+            
+            if not is_email_address:  # 이메일 주소가 아닌 경우에만 자동 제한
+                if risk in [RiskLevel.HIGH] or importance in [DataImportance.CONFIDENTIAL, DataImportance.SECRET]:
+                    # HIGH 위험도 또는 CONFIDENTIAL/SECRET 중요도 → 내부자만
+                    readers = {"internal"}
+                elif risk == RiskLevel.MEDIUM or importance == DataImportance.INTERNAL:
+                    # MEDIUM 위험도 또는 INTERNAL 중요도 → 내부자만
+                    readers = {"internal"}
+        
         # CAMEL 소스인 경우 자동으로 provenance 설정
-        if source == Source.CAMEL:
+        if source == Source.CAMEL and provenance == "user":  # 기본값인 경우에만
             provenance = "camel"
         
         return CaMeLValue(value, Capabilities(

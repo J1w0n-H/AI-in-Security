@@ -1,0 +1,72 @@
+# Mini CaMeL Security Configuration
+# 외부 설정 파일을 통한 보안 정책 관리
+
+# 운영 모드 설정
+operation_mode: "ENFORCEMENT"  # ENFORCEMENT 또는 DRY_RUN
+dry_run: false
+log_level: "INFO"
+
+# 정책 우선순위 (낮은 숫자가 높은 우선순위)
+policy_priority:
+  hard_rules: 1
+  explicit_allow: 2
+  level_thresholds: 3
+  default_allow: 4
+
+# 위험도 임계치 설정
+risk_thresholds:
+  write: "MEDIUM"      # MEDIUM 이상 위험도에서 write 차단
+  delete: "LOW"        # LOW 이상 위험도에서 delete 차단
+  email: "MEDIUM"      # MEDIUM 이상 위험도에서 email 차단
+  print: "HIGH"        # HIGH 위험도에서 print 차단
+
+# 중요도 임계치 설정
+importance_thresholds:
+  write: "CONFIDENTIAL"    # CONFIDENTIAL 이상 중요도에서 write 차단
+  delete: "PUBLIC"         # PUBLIC 이상 중요도에서 delete 차단
+  email: "INTERNAL"        # INTERNAL 이상 중요도에서 email 차단
+  print: "SECRET"          # SECRET 중요도에서 print 차단
+
+# 툴별 위험도 레벨
+tool_risk_levels:
+  print: "LOW"
+  write: "MEDIUM"
+  delete: "HIGH"
+  email: "HIGH"
+
+# 컨텍스트 기반 보정값
+context_adjustments:
+  time_based:
+    business_hours: 0.8    # 업무시간 (9-17시): 임계치 20% 완화
+    after_hours: 1.2       # 야간시간: 임계치 20% 강화
+  user_role:
+    admin: 0.5             # 관리자: 임계치 50% 완화
+    user: 1.0              # 일반 사용자: 기본값
+    guest: 1.5             # 게스트: 임계치 50% 강화
+  data_source:
+    internal: 0.8          # 내부 데이터: 임계치 20% 완화
+    external: 1.2          # 외부 데이터: 임계치 20% 강화
+
+# 하드룰 (패턴 기반 차단)
+hard_rules:
+  - name: "SQL Injection"
+    pattern: "(?i)(union|select|insert|update|delete|drop|create|alter)"
+    action: "BLOCK"
+    message: "SQL injection attempt detected"
+  - name: "Script Injection"
+    pattern: "(?i)(<script|javascript:|onload=|onerror=)"
+    action: "BLOCK"
+    message: "Script injection attempt detected"
+  - name: "Path Traversal"
+    pattern: "(\\.\\./|\\.\\.\\\\)"
+    action: "BLOCK"
+    message: "Path traversal attempt detected"
+
+# 명시적 허용 규칙 (조건 기반)
+explicit_allows:
+  - operation: "print"
+    condition: "source == 'CAMEL' AND risk == 'LOW'"
+  - operation: "write"
+    condition: "source == 'CAMEL' AND importance == 'PUBLIC'"
+  - operation: "email"
+    condition: "source == 'CAMEL' AND risk == 'LOW' AND importance == 'PUBLIC'"
