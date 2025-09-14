@@ -30,7 +30,149 @@ what are the functions that are potential source, sink, or taint-propagators to 
 Package,Class,Method,Signature
 {methods}
 """
+# 추가된 부분 from here
+API_LABELLING_USER_PROMPT_WITH_ENV = """\
+{cwe_long_description}
 
+Some example source/sink/taint-propagator methods are:
+{cwe_examples}
+
+ENVIRONMENT-SPECIFIC ANALYSIS EXAMPLES:
+{environment_examples}
+
+CURRENT ANALYSIS TASK:
+Environment: {env_os} ({env_distro}), {env_java}, Security: SELinux={env_selinux}, AppArmor={env_apparmor}
+
+Based on the examples above, analyze the following methods considering the {env_os} environment:
+
+Package,Class,Method,Signature
+{methods}
+
+Provide your analysis following the same format as the examples, considering:
+1. {env_os}-specific file system behavior
+2. Security mechanisms and their protective effects
+3. Runtime-specific considerations
+4. Platform-specific attack vectors
+"""
+
+# 2단계: 환경 인지형 LLM 판정 프롬프트 추가
+ENVIRONMENT_AWARE_VULNERABILITY_PROMPT = """\
+You are a security expert analyzing a potential vulnerability in a specific environment.
+
+[CODE SUMMARY]:
+Source: {source_location}
+Sink: {sink_location}
+Flow: {flow_summary}
+Intermediate Functions: {intermediate_functions}
+Sanitizers Applied: {sanitizers_applied}
+
+[ENVIRONMENT SUMMARY]:
+Operating System: {env_os} ({env_distro})
+Runtime: {env_runtime}
+Build Tools: {env_build_tools}
+Database: {env_database}
+Security Policies: {env_security_policies}
+File System: {env_filesystem}
+Containerized: {env_containerized}
+
+[ANALYSIS QUESTIONS]:
+1) Is this SINK actually dangerous in this specific environment? (e.g., shell metacharacter interpretation, symlink/UNC/ADS handling, autoescape version compatibility)
+2) Are the SANITIZERS effective in this environment? (version/policy-based neutralization)
+3) What is the exploitability considering the environment context?
+
+[REQUIRED OUTPUT FORMAT]:
+Label: {VULNERABLE_CONFIRMED, ENVIRONMENT_SAFE, UNCERTAIN_NEEDS_TESTING}
+Confidence: {HIGH, MEDIUM, LOW}
+Reasoning: [Brief explanation of why this label was chosen based on environment context]
+Environment Factors: [Specific environment aspects that influenced the decision]
+Rule IDs: [If any environment rules apply, list them]
+
+Analyze the vulnerability considering the specific environment context provided above.
+"""
+# Few-Shot Learning 예시 데이터
+ENVIRONMENT_FEW_SHOT_EXAMPLES = {
+    "windows_path_traversal": """
+EXAMPLE 1 - Windows Path Traversal Analysis:
+Environment: Windows 10, NTFS, Java 11
+Vulnerability: Path Traversal (CWE-022)
+Method: java.io.File(String pathname)
+
+Analysis:
+- Windows uses backslash (\) as path separator
+- NTFS supports Alternate Data Streams (ADS) which can bypass simple path validation
+- UNC paths (\\server\share) can access remote resources
+- Windows security policies may not protect against all traversal attacks
+
+Conclusion: HIGH RISK on Windows due to ADS and UNC path support
+""",
+    
+    "linux_path_traversal": """
+EXAMPLE 2 - Linux Path Traversal Analysis:
+Environment: Ubuntu 22.04, ext4, Java 11, AppArmor enabled
+Vulnerability: Path Traversal (CWE-022)
+Method: java.io.File(String pathname)
+
+Analysis:
+- Linux uses forward slash (/) as path separator
+- Symbolic links can be used for directory traversal
+- AppArmor provides additional protection against file access
+- ext4 file system has different behavior than NTFS
+
+Conclusion: MEDIUM RISK on Linux due to AppArmor protection but symlink risks remain
+""",
+    
+    "windows_command_injection": """
+EXAMPLE 3 - Windows Command Injection Analysis:
+Environment: Windows 10, cmd.exe, Java 11
+Vulnerability: Command Injection (CWE-078)
+Method: Runtime.exec(String command)
+
+Analysis:
+- Windows cmd.exe interprets &, |, <, > as command separators
+- PowerShell has different syntax and security model
+- Windows process creation is different from Unix fork/exec
+- UseShellExecute parameter affects security
+
+Conclusion: HIGH RISK on Windows due to shell interpretation
+""",
+    
+    "linux_command_injection": """
+EXAMPLE 4 - Linux Command Injection Analysis:
+Environment: Ubuntu 22.04, bash, Java 11, AppArmor enabled
+Vulnerability: Command Injection (CWE-078)
+Method: Runtime.exec(String command)
+
+Analysis:
+- Linux bash interprets $, `, |, & as special characters
+- AppArmor can restrict command execution
+- Process isolation and containerization provide protection
+- Different shell behaviors (bash vs sh)
+
+Conclusion: MEDIUM RISK on Linux due to AppArmor but shell interpretation risks remain
+"""
+}
+
+def get_relevant_examples(env_os, vulnerability_type):
+    """Get relevant few-shot examples for the given environment and vulnerability type."""
+    examples = []
+    
+    # Path traversal examples
+    if "path" in vulnerability_type.lower() or "traversal" in vulnerability_type.lower():
+        if env_os.lower() == "windows":
+            examples.append(ENVIRONMENT_FEW_SHOT_EXAMPLES["windows_path_traversal"])
+        else:
+            examples.append(ENVIRONMENT_FEW_SHOT_EXAMPLES["linux_path_traversal"])
+    
+    # Command injection examples
+    if "command" in vulnerability_type.lower() or "injection" in vulnerability_type.lower():
+        if env_os.lower() == "windows":
+            examples.append(ENVIRONMENT_FEW_SHOT_EXAMPLES["windows_command_injection"])
+        else:
+            examples.append(ENVIRONMENT_FEW_SHOT_EXAMPLES["linux_command_injection"])
+    
+    return "\n".join(examples)
+
+# 추가된 부분 to here
 FUNC_PARAM_LABELLING_SYSTEM_PROMPT = """\
 You are a security expert. \
 You are given a list of APIs implemented in established Java libraries, \

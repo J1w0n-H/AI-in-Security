@@ -1,0 +1,232 @@
+# Environment Knowledge Base (E-KB)
+# Rules for environment-specific vulnerability analysis
+
+# 추가된 부분 from here
+sinks:
+  # Command execution sinks
+  - id: command.exec
+    applies_if: 
+      shell: ["bash", "sh", "cmd", "powershell"]
+      os: ["linux", "windows", "macos"]
+    risky_when: 
+      shell_used: true
+      metacharacters_present: true
+    safe_when:
+      shell_used: false
+      args_array_used: true
+    notes: "Shell execution with metacharacters is dangerous. Use subprocess with shell=False for safety."
+    
+  - id: command.exec.windows
+    applies_if:
+      os: ["windows"]
+      shell: ["cmd", "powershell"]
+    risky_when:
+      shell_used: true
+      use_shell_execute: true
+    safe_when:
+      use_shell_execute: false
+      process_start_info_used: true
+    notes: "Windows CreateProcessW with UseShellExecute=false is safer than shell execution"
+    
+  - id: command.exec.linux
+    applies_if:
+      os: ["linux"]
+      shell: ["bash", "sh"]
+    risky_when:
+      shell_used: true
+      environment_variables_used: true
+    safe_when:
+      shell_used: false
+      subprocess_used: true
+    notes: "Linux subprocess with shell=False prevents metacharacter interpretation"
+
+  # Path traversal sinks
+  - id: path.access
+    applies_if:
+      os: ["windows"]
+      fs: ["ntfs"]
+    risky_when:
+      has_unc: true
+      has_ads: true
+      symlink_follow: true
+      path_traversal_chars: true
+    safe_when:
+      path_normalized: true
+      base_path_validation: true
+      canonical_path_used: true
+    notes: "Windows NTFS supports UNC paths and ADS which can bypass simple path validation"
+    
+  - id: path.access.linux
+    applies_if:
+      os: ["linux"]
+      fs: ["ext4", "xfs", "btrfs"]
+    risky_when:
+      symlink_follow: true
+      path_traversal_chars: true
+      relative_paths_used: true
+    safe_when:
+      path_normalized: true
+      realpath_used: true
+      base_path_validation: true
+    notes: "Linux symlinks can be used for path traversal if not properly handled"
+
+  # Template injection sinks
+  - id: template.render
+    applies_if:
+      template_engine: ["jinja2", "django", "freemarker", "thymeleaf"]
+    risky_when:
+      autoescape_disabled: true
+      user_input_direct: true
+      template_injection_chars: true
+    safe_when:
+      autoescape_enabled: true
+      input_sanitized: true
+      safe_filters_used: true
+    notes: "Template engines without autoescape are vulnerable to XSS and code injection"
+
+  # File I/O sinks
+  - id: file.write
+    applies_if:
+      os: ["windows", "linux", "macos"]
+    risky_when:
+      path_traversal_chars: true
+      relative_paths_used: true
+      no_path_validation: true
+    safe_when:
+      path_normalized: true
+      absolute_path_validation: true
+      safe_directory_used: true
+    notes: "File operations with user-controlled paths need proper validation"
+
+sanitizers:
+  # Path normalization sanitizers
+  - id: path.normalize.resolve
+    invalid_when:
+      os: ["windows"]
+      has_ads: true
+      unc_paths_present: true
+    valid_when:
+      os: ["linux"]
+      symlinks_handled: true
+    notes: "resolve() alone may not prevent ADS bypass on Windows NTFS"
+    
+  - id: path.normalize.canonical
+    invalid_when:
+      os: ["windows"]
+      has_unc: true
+    valid_when:
+      os: ["linux"]
+      realpath_used: true
+    notes: "Canonical path resolution may not handle UNC paths properly on Windows"
+    
+  - id: path.normalize.starts_with
+    invalid_when:
+      os: ["windows"]
+      has_ads: true
+      unc_paths_present: true
+    notes: "startsWith() validation can be bypassed with ADS on Windows"
+
+  # Template sanitizers
+  - id: template.autoescape
+    invalid_when:
+      template_engine: ["jinja2"]
+      version: "<3.0"
+      context: ["html_attr", "url", "javascript"]
+    valid_when:
+      template_engine: ["jinja2"]
+      version: ">=3.0"
+      context: ["html_text"]
+    notes: "Jinja2 autoescape behavior varies by version and context"
+
+  # Command sanitizers
+  - id: command.escape
+    invalid_when:
+      os: ["windows"]
+      shell: ["cmd"]
+      special_chars: ["&", "|", "<", ">", "^"]
+    valid_when:
+      os: ["linux"]
+      shell: ["bash"]
+      proper_escaping: true
+    notes: "Command escaping rules differ between Windows and Linux shells"
+
+templates:
+  # Template engine configurations
+  - engine: jinja2
+    version_range_vulnerable: "<3.0"
+    context_rules:
+      - html_text: safe_by_default
+      - html_attr: needs_attr_escape
+      - url: needs_url_escape
+      - javascript: needs_js_escape
+    notes: "Jinja2 autoescape behavior depends on version and context"
+    
+  - engine: django
+    version_range_vulnerable: "<1.9"
+    context_rules:
+      - html: autoescape_enabled
+      - text: manual_escaping_required
+    notes: "Django template autoescape was enabled by default in version 1.9+"
+    
+  - engine: freemarker
+    version_range_vulnerable: "<2.3.24"
+    context_rules:
+      - html: manual_escaping_required
+      - xml: manual_escaping_required
+    notes: "FreeMarker requires manual escaping in older versions"
+
+environments:
+  # Environment-specific configurations
+  - os: windows
+    fs: ntfs
+    risky_features:
+      - unc_paths
+      - ads_streams
+      - symlinks
+      - junction_points
+    safe_practices:
+      - use_absolute_paths
+      - validate_canonical_paths
+      - check_path_traversal
+      
+  - os: linux
+    fs: ext4
+    risky_features:
+      - symlinks
+      - relative_paths
+      - proc_filesystem
+    safe_practices:
+      - use_realpath
+      - validate_base_path
+      - check_symlink_resolution
+      
+  - os: macos
+    fs: apfs
+    risky_features:
+      - symlinks
+      - case_insensitive_paths
+    safe_practices:
+      - use_realpath
+      - validate_case_sensitivity
+      - check_symlink_resolution
+
+# Scoring rules for vulnerability prioritization
+scoring:
+  base_risk: 5
+  environment_weights:
+    command.exec:
+      shell_true: 3
+      shell_false: -2
+      windows_shell: 2
+      linux_shell: 1
+    path.access:
+      ntfs_ads: 2
+      unc_paths: 2
+      symlink_follow: 1
+      path_normalized: -2
+    template.render:
+      autoescape_disabled: 3
+      autoescape_enabled: -2
+      version_vulnerable: 2
+      context_unsafe: 1
+# 추가된 부분 to here

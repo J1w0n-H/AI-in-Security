@@ -27,6 +27,7 @@ ROOT_DIR = THIS_SCRIPT_DIR.parent
 sys.path.append(str(ROOT_DIR))
 
 from src.config import DATA_DIR, DEP_CONFIGS
+from src.modules.env_collector import EnvironmentCollector
 
 # Load dependency configurations
 ALLVERSIONS = json.load(open(DEP_CONFIGS))
@@ -312,6 +313,15 @@ def try_build_with_attempt(project_slug, attempt, attempt_source=""):
     result = build_project_with_attempt(project_slug, attempt)
     if result == NEWLY_BUILT:
         save_local_build_result(project_slug, True, attempt)
+        
+        # Collect environment metadata after successful build
+        project_path = os.path.join(DATA_DIR, "project-sources", project_slug)
+        jdk_version = attempt.get('jdk', 'unknown')
+        build_tool = 'maven' if 'mvn' in attempt else 'gradle' if 'gradle' in attempt else 'gradlew'
+        build_tool_version = attempt.get('mvn') or attempt.get('gradle') or 'unknown'
+        
+        collect_environment_metadata(project_slug, project_path, jdk_version, build_tool, build_tool_version)
+        
         return True
     elif result == ALREADY_BUILT:
         return True
@@ -402,6 +412,42 @@ def build_project(project_slug, try_all=False, custom_attempt=None):
     print(f"[build_one] All build attempts failed for {project_slug}")
     return False
 
+# 추가된 부분 from here
+def collect_environment_metadata(project_slug: str, project_path: str, jdk_version: str, 
+                                build_tool: str, build_tool_version: str) -> None:
+    """Collect and save environment metadata for the project."""
+    try:
+        print(f"[build_one] Collecting environment metadata for {project_slug}")
+        
+        # Create environment collector with config
+        env_collector = EnvironmentCollector(project_path)
+        
+        # Collect all environment information
+        env_data = env_collector.collect_all()
+        
+        # Add project-specific build information
+        if "project_specific" not in env_data:
+            env_data["project_specific"] = {}
+        
+        env_data["project_specific"].update({
+            "jdk_version": jdk_version,
+            "build_tool": build_tool,
+            "build_tool_version": build_tool_version,
+            "project_slug": project_slug
+        })
+        
+        # Add config information for later use
+        env_data["config"] = env_collector.config
+        
+        # Save environment metadata
+        env_collector.save_to_file()
+        
+        print(f"[build_one] Environment metadata saved to {project_path}/env.json")
+        
+    except Exception as e:
+        print(f"[build_one] Warning: Failed to collect environment metadata: {e}")
+
+# 추가된 부분 to here
 
 def main():
     """Main function to handle argument parsing and project building."""

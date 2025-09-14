@@ -24,7 +24,7 @@ from src.config import CODEQL_DIR, CODEQL_DB_PATH, PACKAGE_MODULES_PATH, OUTPUT_
 
 from src.logger import Logger
 from src.queries import QUERIES
-from src.prompts import API_LABELLING_SYSTEM_PROMPT, API_LABELLING_USER_PROMPT
+from src.prompts import API_LABELLING_SYSTEM_PROMPT, API_LABELLING_USER_PROMPT, API_LABELLING_USER_PROMPT_WITH_ENV
 from src.prompts import FUNC_PARAM_LABELLING_SYSTEM_PROMPT, FUNC_PARAM_LABELLING_USER_PROMPT
 
 from src.codeql_queries import QL_SOURCE_PREDICATE, QL_STEP_PREDICATE, QL_SINK_PREDICATE
@@ -37,6 +37,11 @@ from src.codeql_queries import QL_SINK_BODY_ENTRY, QL_SINK_ARG_NAME_ENTRY, QL_SI
 from src.modules.codeql_query_runner import CodeQLQueryRunner
 from src.modules.contextual_analysis_pipeline import ContextualAnalysisPipeline
 from src.modules.evaluation_pipeline import EvaluationPipeline
+from src.modules.env_collector import EnvironmentCollector
+# 추가된 부분 from here
+from src.modules.environment_aware_analyzer import EnvironmentAwareAnalyzer
+from src.modules.vulnerability_ranker import VulnerabilityRanker
+# 추가된 부분 to here
 
 from src.models.llm import LLM
 
@@ -241,6 +246,24 @@ class SAPipeline:
         self.final_output_path = f"{self.project_output_path}/{self.query}-final"
         os.makedirs(self.final_output_path, exist_ok=True)
         self.final_output_json_path = f"{self.final_output_path}/results.json"
+        # 추가된 부분 from here
+        # Setup environment metadata path
+        self.env_metadata_path = f"{self.project_source_code_dir}/env.json"
+        self.env_metadata = self.load_environment_metadata()
+        
+        
+        # Setup environment-aware analyzer
+        self.env_analyzer = EnvironmentAwareAnalyzer(self.env_metadata, self.project_logger)
+        
+        # Setup vulnerability ranker
+        self.vuln_ranker = VulnerabilityRanker(self.project_logger)
+        
+        # Setup environment-aware analysis output path
+        self.env_analysis_output_path = f"{self.project_output_path}/environment-aware-analysis"
+        os.makedirs(self.env_analysis_output_path, exist_ok=True)
+        self.env_analysis_results_path = f"{self.env_analysis_output_path}/results.json"
+        self.ranking_results_path = f"{self.env_analysis_output_path}/ranking.json"
+        # 추가된 부분 to here
 
         # Create logger
         if not self.no_logger:
@@ -276,6 +299,228 @@ dependencies:
         if self.model is None:
             self.model = LLM.get_llm(model_name=self.llm, logger=self.project_logger, kwargs={"seed": self.seed, "max_new_tokens": 2048})
         return self.model
+# 추가된 부분 from here    
+    def load_environment_metadata(self):
+        """Load environment metadata from env.json file."""
+        try:
+            if os.path.exists(self.env_metadata_path):
+                with open(self.env_metadata_path, 'r') as f:
+                    env_data = json.load(f)
+                    if self.project_logger:
+                        self.project_logger.info(f"Loaded environment metadata from {self.env_metadata_path}")
+                    return env_data
+            else:
+                if self.project_logger:
+                    self.project_logger.warning(f"Environment metadata file not found: {self.env_metadata_path}")
+                return {}
+        except Exception as e:
+            if self.project_logger:
+                self.project_logger.error(f"Failed to load environment metadata: {e}")
+            return {}
+    
+    def _prepare_env_context(self):
+        """Prepare environment context for LLM prompts."""
+        if not self.env_metadata:
+            return {}
+        
+        # Check if environment context should be included in prompts
+        if not self.env_metadata.get("config", {}).get("prompt", {}).get("use_env_context", True):
+            return {}
+        
+        try:
+            context_format = self.env_metadata.get("config", {}).get("prompt", {}).get("context_format", "detailed")
+            include_fields = self.env_metadata.get("config", {}).get("prompt", {}).get("include_fields", [
+                "os", "distro", "runtime", "frameworks", "db", "policies"
+            ])
+            
+            env_context = {}
+            
+            if "os" in include_fields:
+                env_context["env_os"] = self.env_metadata.get("os", "unknown")
+            if "distro" in include_fields:
+                env_context["env_distro"] = self.env_metadata.get("distro", "unknown")
+            if "runtime" in include_fields:
+                env_context["env_python"] = self.env_metadata.get("runtime", {}).get("python", "unknown")
+                env_context["env_java"] = self.env_metadata.get("runtime", {}).get("java", "unknown")
+            if "frameworks" in include_fields:
+                env_context["env_build_tool"] = self.env_metadata.get("project_specific", {}).get("build_tool", "unknown")
+                env_context["env_build_tool_version"] = self.env_metadata.get("project_specific", {}).get("build_tool_version", "unknown")
+            if "db" in include_fields:
+                env_context["env_db_drivers"] = self.env_metadata.get("db", {}).get("driver", "none")
+            if "policies" in include_fields:
+                env_context["env_selinux"] = self.env_metadata.get("policies", {}).get("selinux", "unknown")
+                env_context["env_apparmor"] = self.env_metadata.get("policies", {}).get("apparmor", "unknown")
+            
+            return env_context
+        except Exception as e:
+            if self.project_logger:
+                self.project_logger.warning(f"Failed to prepare environment context: {e}")
+            return {}
+    
+    def _prepare_few_shot_examples(self, env_os, cwe_description):
+        """Prepare few-shot examples for the given environment and vulnerability type."""
+        from src.prompts import get_relevant_examples
+        return get_relevant_examples(env_os, cwe_description)
+# 추가된 부분 to here
+
+    # 추가된 부분 from here
+    def perform_environment_aware_analysis(self):
+        """Perform environment-aware analysis on CodeQL results."""
+        self.project_logger.info("==> Stage 10: Performing environment-aware analysis...")
+        
+        # Check if SARIF results exist
+        if not os.path.exists(self.query_output_result_sarif_pp_path):
+            self.project_logger.warning("No SARIF results found for environment-aware analysis")
+            return
+        
+        # Load SARIF results
+        with open(self.query_output_result_sarif_pp_path, 'r') as f:
+            sarif_results = json.load(f)
+        
+        # Process each vulnerability
+        env_analysis_results = []
+        for run in sarif_results.get("runs", []):
+            for result in run.get("results", []):
+                env_analysis = self._analyze_single_vulnerability(result)
+                if env_analysis:
+                    env_analysis_results.append(env_analysis)
+        
+        # Save environment-aware analysis results
+        with open(self.env_analysis_results_path, 'w') as f:
+            json.dump(env_analysis_results, f, indent=2)
+        
+        self.project_logger.info(f"Environment-aware analysis completed. Results saved to {self.env_analysis_results_path}")
+    
+    # 추가된 부분 from here
+    def perform_vulnerability_ranking(self):
+        """Perform vulnerability ranking based on environment-weighted risk scores."""
+        self.project_logger.info("==> Stage 11: Performing vulnerability ranking...")
+        
+        # Check if environment analysis results exist
+        if not os.path.exists(self.env_analysis_results_path):
+            self.project_logger.warning("No environment analysis results found for ranking")
+            return
+        
+        # Load environment analysis results
+        with open(self.env_analysis_results_path, 'r') as f:
+            env_analysis_results = json.load(f)
+        
+        # Prepare environment context for ranking
+        env_context = self._prepare_environment_context()
+        
+        # Rank vulnerabilities
+        ranked_vulnerabilities = self.vuln_ranker.rank_vulnerabilities(
+            vulnerabilities=env_analysis_results,
+            environment_context=env_context
+        )
+        
+        # Generate ranking report
+        ranking_report = self.vuln_ranker.generate_ranking_report(
+            ranked_vulnerabilities=ranked_vulnerabilities,
+            top_n=20  # Show top 20 vulnerabilities
+        )
+        
+        # Save ranking results
+        with open(self.ranking_results_path, 'w') as f:
+            json.dump(ranking_report, f, indent=2)
+        
+        self.project_logger.info(f"Vulnerability ranking completed. Results saved to {self.ranking_results_path}")
+        
+        # Log ranking summary
+        summary = ranking_report["summary"]
+        self.project_logger.info(f"Ranking Summary: {summary['total_vulnerabilities']} vulnerabilities, "
+                               f"avg risk score: {summary['average_risk_score']}, "
+                               f"priority distribution: {summary['priority_distribution']}")
+    # 추가된 부분 to here
+    
+    def _analyze_single_vulnerability(self, sarif_result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Analyze a single vulnerability from SARIF results."""
+        try:
+            # Extract vulnerability information
+            source_location = self._extract_source_location(sarif_result)
+            sink_location = self._extract_sink_location(sarif_result)
+            flow_summary = self._extract_flow_summary(sarif_result)
+            intermediate_functions = self._extract_intermediate_functions(sarif_result)
+            sanitizers_applied = self._extract_sanitizers(sarif_result)
+            
+            # Perform environment-aware analysis
+            analysis_result = self.env_analyzer.analyze_vulnerability_path(
+                source_location=source_location,
+                sink_location=sink_location,
+                flow_summary=flow_summary,
+                intermediate_functions=intermediate_functions,
+                sanitizers_applied=sanitizers_applied,
+                cwe_id=self.cwe_id
+            )
+            
+            # Combine with original SARIF result
+            return {
+                "sarif_result": sarif_result,
+                "environment_analysis": analysis_result,
+                "cwe_id": self.cwe_id,
+                "project_name": self.project_name
+            }
+            
+        except Exception as e:
+            if self.project_logger:
+                self.project_logger.error(f"Error analyzing vulnerability: {e}")
+            return None
+    
+    def _extract_source_location(self, sarif_result: Dict[str, Any]) -> str:
+        """Extract source location from SARIF result."""
+        try:
+            if "codeFlows" in sarif_result and sarif_result["codeFlows"]:
+                first_flow = sarif_result["codeFlows"][0]
+                if "threadFlows" in first_flow and first_flow["threadFlows"]:
+                    first_location = first_flow["threadFlows"][0]["locations"][0]
+                    return first_location["location"]["physicalLocation"]["artifactLocation"]["uri"]
+        except Exception:
+            pass
+        return "unknown"
+    
+    def _extract_sink_location(self, sarif_result: Dict[str, Any]) -> str:
+        """Extract sink location from SARIF result."""
+        try:
+            if "codeFlows" in sarif_result and sarif_result["codeFlows"]:
+                first_flow = sarif_result["codeFlows"][0]
+                if "threadFlows" in first_flow and first_flow["threadFlows"]:
+                    last_location = first_flow["threadFlows"][0]["locations"][-1]
+                    return last_location["location"]["physicalLocation"]["artifactLocation"]["uri"]
+        except Exception:
+            pass
+        return "unknown"
+    
+    def _extract_flow_summary(self, sarif_result: Dict[str, Any]) -> str:
+        """Extract flow summary from SARIF result."""
+        try:
+            return sarif_result.get("message", {}).get("text", "unknown")
+        except Exception:
+            return "unknown"
+    
+    def _extract_intermediate_functions(self, sarif_result: Dict[str, Any]) -> List[str]:
+        """Extract intermediate functions from SARIF result."""
+        try:
+            functions = []
+            if "codeFlows" in sarif_result and sarif_result["codeFlows"]:
+                first_flow = sarif_result["codeFlows"][0]
+                if "threadFlows" in first_flow and first_flow["threadFlows"]:
+                    locations = first_flow["threadFlows"][0]["locations"]
+                    for location in locations[1:-1]:  # Skip first and last
+                        if "location" in location and "message" in location["location"]:
+                            functions.append(location["location"]["message"]["text"])
+            return functions
+        except Exception:
+            return []
+    
+    def _extract_sanitizers(self, sarif_result: Dict[str, Any]) -> List[str]:
+        """Extract sanitizers from SARIF result."""
+        try:
+            # This would need to be enhanced based on how sanitizers are marked in SARIF
+            # For now, return empty list
+            return []
+        except Exception:
+            return []
+    # 추가된 부분 to here
 
     def run_simple_codeql_query(self, query, target_csv_path=None, suffix=None, dyn_queries={}):
         runner = CodeQLQueryRunner(self.project_output_path, self.project_codeql_db_path, self.project_logger)
@@ -550,6 +795,9 @@ dependencies:
             cwe_description = QUERIES[self.query]["prompts"]["desc"]
             cwe_long_description = QUERIES[self.query]["prompts"]["long_desc"]
             cwe_examples = json.dumps(QUERIES[self.query]["prompts"]["examples"], indent=2)
+            
+            # Prepare environment context for prompt
+            env_context = self._prepare_env_context()
 
             # 4. Setup dispatch function. This function will be invoked for each batch, where i = 0, batch_size, 2 * batch_size, ...
             def process_candidate_batch(i):
@@ -558,12 +806,27 @@ dependencies:
                 api_list_text = "\n".join([",".join(row) for row in batch])
 
                 # 4.2. Build the user prompt and dump it
-                user_prompt = API_LABELLING_USER_PROMPT.format(
-                    cwe_description=cwe_description,
-                    cwe_id=self.cwe_id,
-                    cwe_long_description=cwe_long_description,
-                    cwe_examples=cwe_examples,
-                    methods=api_list_text)
+                if env_context:
+                    # Add few-shot examples for better environment awareness
+                    env_os = env_context.get('env_os', 'Unknown')
+                    few_shot_examples = self._prepare_few_shot_examples(env_os, cwe_description)
+                    
+                    user_prompt = API_LABELLING_USER_PROMPT_WITH_ENV.format(
+                        cwe_description=cwe_description,
+                        cwe_id=self.cwe_id,
+                        cwe_long_description=cwe_long_description,
+                        cwe_examples=cwe_examples,
+                        methods=api_list_text,
+                        environment_examples=few_shot_examples,
+                        **env_context
+                    )
+                else:
+                    user_prompt = API_LABELLING_USER_PROMPT.format(
+                        cwe_description=cwe_description,
+                        cwe_id=self.cwe_id,
+                        cwe_long_description=cwe_long_description,
+                        cwe_examples=cwe_examples,
+                        methods=api_list_text)
                 with open(f"{self.label_api_log_path}/raw_user_prompt_{i}.txt", "w") as f:
                     f.write(user_prompt + "\n")
 
@@ -1304,7 +1567,13 @@ dependencies:
         # 9. Evaluate performance
         self.evaluate_result()
 
-        # 10. Debuggging
+        # 10. Environment-aware analysis
+        self.perform_environment_aware_analysis()
+
+        # 11. Vulnerability ranking
+        self.perform_vulnerability_ranking()
+
+        # 12. Debuggging
         self.debug_result()
 
 

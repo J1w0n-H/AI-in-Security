@@ -13,3 +13,4 @@ dependencies:
   - transformers
   - pytorch=2.5
   - google-generativeai
+  - pyyaml

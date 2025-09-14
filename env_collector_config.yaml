@@ -1,0 +1,105 @@
+# Environment Metadata Collector Configuration
+# This file controls what environment information is collected and how it's processed
+
+# Enable/disable environment collection
+enabled: true
+
+# Collection settings
+collection:
+  # System information collection
+  system:
+    enabled: true
+    collect_distro: true
+    collect_container_info: true
+    collect_filesystem: true
+    collect_shell: true
+  
+  # Runtime information collection
+  runtime:
+    enabled: true
+    collect_python: true
+    collect_java: true
+    collect_node: true
+  
+  # Framework information collection
+  frameworks:
+    enabled: true
+    collect_maven: true
+    collect_gradle: true
+    collect_ant: true
+  
+  # Database information collection
+  database:
+    enabled: true
+    detect_drivers: true
+    driver_patterns:
+      - "mysql-connector"
+      - "postgresql"
+      - "h2"
+      - "sqlite"
+      - "oracle"
+      - "mssql"
+      - "mongodb"
+      - "redis"
+  
+  # Security policies collection
+  security:
+    enabled: true
+    collect_selinux: true
+    collect_apparmor: true
+    collect_firewall: true
+  
+  # Project-specific information collection
+  project:
+    enabled: true
+    detect_jdk_version: true
+    detect_build_tool: true
+    extract_dependencies: true
+    dependency_files:
+      - "pom.xml"
+      - "build.gradle"
+      - "build.gradle.kts"
+      - "build.xml"
+
+# Output settings
+output:
+  # File name for environment metadata
+  filename: "env.json"
+  
+  # Include in analysis results
+  include_in_results: true
+  
+  # Include in LLM prompts
+  include_in_prompts: true
+  
+  # Verbose logging
+  verbose: false
+
+# LLM prompt settings
+prompt:
+  # Use environment-aware prompts
+  use_env_context: true
+  
+  # Environment context format
+  context_format: "detailed"  # "simple" or "detailed"
+  
+  # Include specific environment fields in prompts
+  include_fields:
+    - "os"
+    - "distro"
+    - "runtime"
+    - "frameworks"
+    - "db"
+    - "policies"
+
+# Performance settings
+performance:
+  # Timeout for subprocess calls (seconds)
+  subprocess_timeout: 30
+  
+  # Maximum file size to scan for dependencies (bytes)
+  max_file_size: 1048576  # 1MB
+  
+  # Skip large projects (number of dependencies)
+  skip_large_projects: false
+  large_project_threshold: 1000
