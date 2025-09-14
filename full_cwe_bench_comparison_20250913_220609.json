@@ -1,0 +1,592 @@
+{
+  "timestamp": "20250913_220609",
+  "test_type": "Full CWE-Bench-Java Comparison",
+  "total_projects_available": 120,
+  "test_projects_count": 20,
+  "test_projects": [
+    "testng-team__testng_CVE-2022-4065_7.5",
+    "apache__tika_CVE-2018-11762_1.18",
+    "perwendel__spark_CVE-2018-9159_2.7.1",
+    "apache__mina-sshd_CVE-2023-35887_2.9.2",
+    "kubernetes-client__java_CVE-2020-8570_client-java-parent-9.0.1",
+    "jenkinsci__docker-commons-plugin_CVE-2022-20617_1.17",
+    "jenkinsci__script-security-plugin_CVE-2023-24422_1228.vd93135a_2fb_25",
+    "x-stream__xstream_CVE-2021-21345_1.4.15",
+    "x-stream__xstream_CVE-2020-26217_1.4.14-java7",
+    "codehaus-plexus__plexus-utils_CVE-2017-1000487_3.0.15",
+    "apache__jspwiki_CVE-2019-10077_2.11.0.M3",
+    "apache__sling-org-apache-sling-xss_CVE-2016-5394_1.0.8",
+    "ESAPI__esapi-java-legacy_CVE-2022-24891_2.2.3.1",
+    "nahsra__antisamy_CVE-2017-14735_1.5.6",
+    "nahsra__antisamy_CVE-2016-10006_1.5.3",
+    "jmrozanec__cron-utils_CVE-2021-41269_9.1.5",
+    "spring-cloud__spring-cloud-gateway_CVE-2022-22947_3.0.6",
+    "apache__dubbo_CVE-2021-30180_2.7.9",
+    "apache__rocketmq_CVE-2023-37582_4.9.6",
+    "SpringSource__spring-security-oauth_CVE-2018-1260_2.3.2.RELEASE"
+  ],
+  "analysis": {
+    "total_projects": 20,
+    "original_success_count": 0,
+    "env_aware_success_count": 0,
+    "original_success_rate": 0.0,
+    "env_aware_success_rate": 0.0,
+    "successful_pairs": 0,
+    "cwe_stats": {
+      "CWE-022": {
+        "total": 5,
+        "orig_success": 0,
+        "env_success": 0,
+        "orig_times": [],
+        "env_times": []
+      },
+      "CWE-078": {
+        "total": 5,
+        "orig_success": 0,
+        "env_success": 0,
+        "orig_times": [],
+        "env_times": []
+      },
+      "CWE-079": {
+        "total": 5,
+        "orig_success": 0,
+        "env_success": 0,
+        "orig_times": [],
+        "env_times": []
+      },
+      "CWE-094": {
+        "total": 5,
+        "orig_success": 0,
+        "env_success": 0,
+        "orig_times": [],
+        "env_times": []
+      }
+    },
+    "failed_projects": [
+      {
+        "project_slug": "testng-team__testng_CVE-2022-4065_7.5",
+        "cwe_id": "CWE-022",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "apache__tika_CVE-2018-11762_1.18",
+        "cwe_id": "CWE-022",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "perwendel__spark_CVE-2018-9159_2.7.1",
+        "cwe_id": "CWE-022",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "apache__mina-sshd_CVE-2023-35887_2.9.2",
+        "cwe_id": "CWE-022",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "kubernetes-client__java_CVE-2020-8570_client-java-parent-9.0.1",
+        "cwe_id": "CWE-022",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "jenkinsci__docker-commons-plugin_CVE-2022-20617_1.17",
+        "cwe_id": "CWE-078",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "x-stream__xstream_CVE-2021-21345_1.4.15",
+        "cwe_id": "CWE-078",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "jenkinsci__script-security-plugin_CVE-2023-24422_1228.vd93135a_2fb_25",
+        "cwe_id": "CWE-078",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "codehaus-plexus__plexus-utils_CVE-2017-1000487_3.0.15",
+        "cwe_id": "CWE-078",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "apache__jspwiki_CVE-2019-10077_2.11.0.M3",
+        "cwe_id": "CWE-079",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "x-stream__xstream_CVE-2020-26217_1.4.14-java7",
+        "cwe_id": "CWE-078",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "apache__sling-org-apache-sling-xss_CVE-2016-5394_1.0.8",
+        "cwe_id": "CWE-079",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "ESAPI__esapi-java-legacy_CVE-2022-24891_2.2.3.1",
+        "cwe_id": "CWE-079",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "jmrozanec__cron-utils_CVE-2021-41269_9.1.5",
+        "cwe_id": "CWE-094",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "nahsra__antisamy_CVE-2017-14735_1.5.6",
+        "cwe_id": "CWE-079",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "nahsra__antisamy_CVE-2016-10006_1.5.3",
+        "cwe_id": "CWE-079",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "apache__rocketmq_CVE-2023-37582_4.9.6",
+        "cwe_id": "CWE-094",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "spring-cloud__spring-cloud-gateway_CVE-2022-22947_3.0.6",
+        "cwe_id": "CWE-094",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "apache__dubbo_CVE-2021-30180_2.7.9",
+        "cwe_id": "CWE-094",
+        "orig_success": false,
+        "env_success": false
+      },
+      {
+        "project_slug": "SpringSource__spring-security-oauth_CVE-2018-1260_2.3.2.RELEASE",
+        "cwe_id": "CWE-094",
+        "orig_success": false,
+        "env_success": false
+      }
+    ]
+  },
+  "original_results": [
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02725052833557129,
+      "return_code": 2,
+      "project_slug": "testng-team__testng_CVE-2022-4065_7.5",
+      "cwe_id": "CWE-022",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.027100563049316406,
+      "return_code": 2,
+      "project_slug": "apache__tika_CVE-2018-11762_1.18",
+      "cwe_id": "CWE-022",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.027155160903930664,
+      "return_code": 2,
+      "project_slug": "perwendel__spark_CVE-2018-9159_2.7.1",
+      "cwe_id": "CWE-022",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.027086257934570312,
+      "return_code": 2,
+      "project_slug": "apache__mina-sshd_CVE-2023-35887_2.9.2",
+      "cwe_id": "CWE-022",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02576589584350586,
+      "return_code": 2,
+      "project_slug": "kubernetes-client__java_CVE-2020-8570_client-java-parent-9.0.1",
+      "cwe_id": "CWE-022",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02585434913635254,
+      "return_code": 2,
+      "project_slug": "jenkinsci__docker-commons-plugin_CVE-2022-20617_1.17",
+      "cwe_id": "CWE-078",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.025680065155029297,
+      "return_code": 2,
+      "project_slug": "x-stream__xstream_CVE-2021-21345_1.4.15",
+      "cwe_id": "CWE-078",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02589893341064453,
+      "return_code": 2,
+      "project_slug": "jenkinsci__script-security-plugin_CVE-2023-24422_1228.vd93135a_2fb_25",
+      "cwe_id": "CWE-078",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.027254581451416016,
+      "return_code": 2,
+      "project_slug": "codehaus-plexus__plexus-utils_CVE-2017-1000487_3.0.15",
+      "cwe_id": "CWE-078",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.027251482009887695,
+      "return_code": 2,
+      "project_slug": "apache__jspwiki_CVE-2019-10077_2.11.0.M3",
+      "cwe_id": "CWE-079",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.027476072311401367,
+      "return_code": 2,
+      "project_slug": "x-stream__xstream_CVE-2020-26217_1.4.14-java7",
+      "cwe_id": "CWE-078",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02727818489074707,
+      "return_code": 2,
+      "project_slug": "apache__sling-org-apache-sling-xss_CVE-2016-5394_1.0.8",
+      "cwe_id": "CWE-079",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.0255584716796875,
+      "return_code": 2,
+      "project_slug": "ESAPI__esapi-java-legacy_CVE-2022-24891_2.2.3.1",
+      "cwe_id": "CWE-079",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02545309066772461,
+      "return_code": 2,
+      "project_slug": "jmrozanec__cron-utils_CVE-2021-41269_9.1.5",
+      "cwe_id": "CWE-094",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02579474449157715,
+      "return_code": 2,
+      "project_slug": "nahsra__antisamy_CVE-2017-14735_1.5.6",
+      "cwe_id": "CWE-079",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.025841474533081055,
+      "return_code": 2,
+      "project_slug": "nahsra__antisamy_CVE-2016-10006_1.5.3",
+      "cwe_id": "CWE-079",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.024559497833251953,
+      "return_code": 2,
+      "project_slug": "apache__rocketmq_CVE-2023-37582_4.9.6",
+      "cwe_id": "CWE-094",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02490401268005371,
+      "return_code": 2,
+      "project_slug": "spring-cloud__spring-cloud-gateway_CVE-2022-22947_3.0.6",
+      "cwe_id": "CWE-094",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.025234699249267578,
+      "return_code": 2,
+      "project_slug": "apache__dubbo_CVE-2021-30180_2.7.9",
+      "cwe_id": "CWE-094",
+      "use_env_context": false
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.025322914123535156,
+      "return_code": 2,
+      "project_slug": "SpringSource__spring-security-oauth_CVE-2018-1260_2.3.2.RELEASE",
+      "cwe_id": "CWE-094",
+      "use_env_context": false
+    }
+  ],
+  "env_aware_results": [
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.023641347885131836,
+      "return_code": 2,
+      "project_slug": "testng-team__testng_CVE-2022-4065_7.5",
+      "cwe_id": "CWE-022",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02323603630065918,
+      "return_code": 2,
+      "project_slug": "apache__mina-sshd_CVE-2023-35887_2.9.2",
+      "cwe_id": "CWE-022",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02371525764465332,
+      "return_code": 2,
+      "project_slug": "apache__tika_CVE-2018-11762_1.18",
+      "cwe_id": "CWE-022",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02381610870361328,
+      "return_code": 2,
+      "project_slug": "perwendel__spark_CVE-2018-9159_2.7.1",
+      "cwe_id": "CWE-022",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02228569984436035,
+      "return_code": 2,
+      "project_slug": "jenkinsci__docker-commons-plugin_CVE-2022-20617_1.17",
+      "cwe_id": "CWE-078",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02213907241821289,
+      "return_code": 2,
+      "project_slug": "x-stream__xstream_CVE-2021-21345_1.4.15",
+      "cwe_id": "CWE-078",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.022609949111938477,
+      "return_code": 2,
+      "project_slug": "jenkinsci__script-security-plugin_CVE-2023-24422_1228.vd93135a_2fb_25",
+      "cwe_id": "CWE-078",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.022890090942382812,
+      "return_code": 2,
+      "project_slug": "kubernetes-client__java_CVE-2020-8570_client-java-parent-9.0.1",
+      "cwe_id": "CWE-022",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02367997169494629,
+      "return_code": 2,
+      "project_slug": "x-stream__xstream_CVE-2020-26217_1.4.14-java7",
+      "cwe_id": "CWE-078",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02361154556274414,
+      "return_code": 2,
+      "project_slug": "codehaus-plexus__plexus-utils_CVE-2017-1000487_3.0.15",
+      "cwe_id": "CWE-078",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.023477554321289062,
+      "return_code": 2,
+      "project_slug": "apache__jspwiki_CVE-2019-10077_2.11.0.M3",
+      "cwe_id": "CWE-079",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.023552656173706055,
+      "return_code": 2,
+      "project_slug": "apache__sling-org-apache-sling-xss_CVE-2016-5394_1.0.8",
+      "cwe_id": "CWE-079",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.021541595458984375,
+      "return_code": 2,
+      "project_slug": "ESAPI__esapi-java-legacy_CVE-2022-24891_2.2.3.1",
+      "cwe_id": "CWE-079",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.021239757537841797,
+      "return_code": 2,
+      "project_slug": "jmrozanec__cron-utils_CVE-2021-41269_9.1.5",
+      "cwe_id": "CWE-094",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02157139778137207,
+      "return_code": 2,
+      "project_slug": "nahsra__antisamy_CVE-2016-10006_1.5.3",
+      "cwe_id": "CWE-079",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.022409915924072266,
+      "return_code": 2,
+      "project_slug": "nahsra__antisamy_CVE-2017-14735_1.5.6",
+      "cwe_id": "CWE-079",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.0241701602935791,
+      "return_code": 2,
+      "project_slug": "apache__dubbo_CVE-2021-30180_2.7.9",
+      "cwe_id": "CWE-094",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02408146858215332,
+      "return_code": 2,
+      "project_slug": "apache__rocketmq_CVE-2023-37582_4.9.6",
+      "cwe_id": "CWE-094",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.024415969848632812,
+      "return_code": 2,
+      "project_slug": "spring-cloud__spring-cloud-gateway_CVE-2022-22947_3.0.6",
+      "cwe_id": "CWE-094",
+      "use_env_context": true
+    },
+    {
+      "success": false,
+      "stdout": "",
+      "stderr": "python: can't open file 'C:\\\\Users\\\\Jiwoney\\\\Git\\\\ai-in-security\\\\src\\\\iris.py': [Errno 2] No such file or directory\n",
+      "execution_time": 0.02344369888305664,
+      "return_code": 2,
+      "project_slug": "SpringSource__spring-security-oauth_CVE-2018-1260_2.3.2.RELEASE",
+      "cwe_id": "CWE-094",
+      "use_env_context": true
+    }
+  ]
+}

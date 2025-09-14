@@ -1,0 +1,55 @@
+{
+  "timestamp": "20250913_220150",
+  "test_type": "CWE-Bench-Java Mock Data Comparison",
+  "total_projects": 3,
+  "results": [
+    {
+      "project_slug": "perwendel__spark_CVE-2018-9159_2.7.1",
+      "cwe_id": "022",
+      "cwe_name": "Path Traversal",
+      "original_success": true,
+      "env_aware_success": true,
+      "original_time": 42.1,
+      "env_aware_time": 45.2,
+      "time_change_percent": 7.363420427553448,
+      "original_keywords": 0,
+      "env_aware_keywords": 15,
+      "keyword_improvement": 15,
+      "has_environment_analysis": true,
+      "has_dynamic_verification": true,
+      "has_vulnerability_ranking": true
+    },
+    {
+      "project_slug": "apache__camel_CVE-2018-8041_2.20.3",
+      "cwe_id": "022",
+      "cwe_name": "Path Traversal",
+      "original_success": true,
+      "env_aware_success": true,
+      "original_time": 42.1,
+      "env_aware_time": 45.2,
+      "time_change_percent": 7.363420427553448,
+      "original_keywords": 0,
+      "env_aware_keywords": 15,
+      "keyword_improvement": 15,
+      "has_environment_analysis": true,
+      "has_dynamic_verification": true,
+      "has_vulnerability_ranking": true
+    },
+    {
+      "project_slug": "x-stream__xstream_CVE-2013-7285_1.4.6",
+      "cwe_id": "078",
+      "cwe_name": "Command Injection",
+      "original_success": true,
+      "env_aware_success": true,
+      "original_time": 42.1,
+      "env_aware_time": 45.2,
+      "time_change_percent": 7.363420427553448,
+      "original_keywords": 0,
+      "env_aware_keywords": 15,
+      "keyword_improvement": 15,
+      "has_environment_analysis": true,
+      "has_dynamic_verification": true,
+      "has_vulnerability_ranking": true
+    }
+  ]
+}

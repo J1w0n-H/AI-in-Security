@@ -1,0 +1,35 @@
+{
+  "timestamp": "20250913_220041",
+  "total_projects": 3,
+  "original_success_count": 0,
+  "env_aware_success_count": 0,
+  "results": [
+    {
+      "project_slug": "DSpace__DSpace_CVE-2016-10726_4.4",
+      "cwe_id": "CWE-022",
+      "original_success": false,
+      "env_aware_success": false,
+      "original_time": 0.022845983505249023,
+      "env_aware_time": 0.019229650497436523,
+      "time_improvement": 0
+    },
+    {
+      "project_slug": "x-stream__xstream_CVE-2013-7285_1.4.6",
+      "cwe_id": "CWE-078",
+      "original_success": false,
+      "env_aware_success": false,
+      "original_time": 0.023058414459228516,
+      "env_aware_time": 0.020260334014892578,
+      "time_improvement": 0
+    },
+    {
+      "project_slug": "nahsra__antisamy_CVE-2016-10006_1.5.3",
+      "cwe_id": "CWE-079",
+      "original_success": false,
+      "env_aware_success": false,
+      "original_time": 0.02108478546142578,
+      "env_aware_time": 0.018570661544799805,
+      "time_improvement": 0
+    }
+  ]
+}

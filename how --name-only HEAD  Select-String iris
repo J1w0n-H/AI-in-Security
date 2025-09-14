@@ -1,0 +1,37 @@
+[33mcommit 64f5097b5860ac50230fd6088858000bf15ca333[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Jiwon Hwang <jhwang97@terpmail.umd.edu>
+Date:   Fri Sep 12 00:36:07 2025 -0400
+
+    Enhanced Mini CaMeL security framework with bug fixes and new features
+    
+    - Fixed 6 critical security vulnerabilities (A-F)
+    - Added Q-LLM dependency blocking for enhanced isolation
+    - Implemented STRICT mode with control dependency tracking
+    - Added YAML configuration support for external policy management
+    - Enhanced security policies with explicit allow/deny rules
+    - Improved risk and importance inference algorithms
+    - Added comprehensive test suite with 40+ test cases
+    - Updated documentation with detailed explanations and examples
+
+.env.example
+.gitignore
+.python-version
+CONTRIBUTING.md
+LICENSE
+README.md
+analysis.ipynb
+count_tokens.py
+h origin main
+iris
+main.py
+mini_camel/README.md
+mini_camel/__pycache__/mini_camel.cpython-313.pyc
+mini_camel/__pycache__/test_mini_camel.cpython-313.pyc
+mini_camel/mini_camel.py
+mini_camel/security_config.yaml
+mini_camel/test_mini_camel.py
+print_conversation.py
+pyproject.toml
+run_code.py
+tatus
+uv.lock
